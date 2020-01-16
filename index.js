@@ -9,12 +9,14 @@ var express         = require('express'),
 
     let redisConfig = config.get('redis');
 
-const RES_SUCCESS_REQ = 200;
-const RES_SUCCESS_MODIFY =201;
-const RES_FAIL_REQ = 400;
-const RES_FAIL_FORBIDDEN = 403;
-const RES_FAIL_GET = 404;
-const RES_FAIL_SERVER = 500;
+const SUCCESS_REQ = 200;
+const SUCCESS_MODIFY =201;
+
+const FAIL_BAD_REQUEST = 400;
+const FAIL_UNAUTHORIZED = 401;
+const FAIL_FORBIDDEN = 403;
+const FAIL_NOT_FOUND = 404;
+const FAIL_SERVER_ERR = 500;
 
 class RESULT {
     constructor(reason, result, header){
@@ -41,9 +43,10 @@ app.use(session);
 app.use(bodyParser.json());
 app.use(cors());
 
+//todo
 app.route('/users')
     .get((req,res)=>{
-        res.status(400).send("Block not found");
+        res.status(FAIL_NOT_FOUND).send("Block not found");
     })
     .post((req,res)=>{
 
@@ -55,15 +58,28 @@ app.route('/users')
 
     })
 
+//todo
 app.route('/login')
     .post((req,res)=>{
         // req.body.ID
         // req.body.PW
+        if(SUCCESS){ //todo
+            req.session.uid = req.body.ID;
+            res.status(SUCCESS_REQ).send("Login Success");
+        } else {
+            res.status(FAIL_UNAUTHORIZED).send("Login Fail");
+        }
     })
     .delete((req,res)=>{
-
+        if(SUCCESS){ //todo
+            req.session.destroy();
+            res.status(SUCCESS_REQ).send("Logout Success");
+        } else {
+            res.status(FAIL_NOT_FOUND).send("Logout Fail");
+        }
     })
 
+//todo
 app.route('/challenge')
     .post((req,res)=>{
         //req.body.ID
