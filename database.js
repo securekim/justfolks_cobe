@@ -5,9 +5,9 @@ const mysqlConfig = config.get('mysql');
 var pool  = mysql.createPool(mysqlConfig);
 
 const QUERY = {
-    USERS_GET : "",
-    USERS_POST : "",
-    USERS_DELETE : "",
+    USERS_GET       : "",
+    USERS_POST      : "",
+    USERS_DELETE    : "",
 
 }
 
@@ -21,3 +21,8 @@ const generalQ = (query, paramArr, callback)=>{
         });
       });
 }
+
+module.exports = {
+    generalQ,
+    QUERY,
+};
