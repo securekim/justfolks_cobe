@@ -34,12 +34,16 @@ const H_FAIL_NOT_FOUND      = 404;
 const H_FAIL_SERVER_ERR     = 500;
 
 //////////////////////BODY/////////////////////
+const B_SUCCESS_REQ         = "Success";
+const B_SUCCESS_MODIFY      = "Modified";
 const B_FAIL_ID             = "ID is incorrect.";
 const B_FAIL_PW             = "PW is incorrect.";
 const B_FAIL_LOGIN          = "ID or PW is incorrect.";
 const B_FAIL_UNAUTHORIZED   = "You are not logged in.";
 const B_FAIL_FORBIDDEN      = "You don't have permission.";
 const B_FAIL_NOT_FOUND      = "There is no data.";
+const B_FAIL_SERVER_ERR     = "Undefined feature.";
+
 
 class RESULT {
     constructor(reason, result, header){
@@ -68,17 +72,46 @@ app.use(cors());
 
 //todo
 app.route('/users')
-    .get((req,res)=>{
+    //todo [users] 전체 유저 정보 가져오기
+    .get((req,res)=>{ 
         res.status(H_FAIL_NOT_FOUND).send(B_FAIL_NOT_FOUND);
     })
-    .post((req,res)=>{
+    //todo [users] 회원가입. 필수 : ID, NM
+    .post((req,res)=>{ 
+        //"INSERT INTO users(ID, Email, NM, Type, Point, Level, Platform) VALUES(_GENQ_);",
+        let ID       =   req.body.ID
+            ,Email   =   req.body.Email
+            ,NM      =   req.body.NM
+            ,Type    =   req.body.Type
+            ,Point   =   0
+            ,Level   =   0
+            ,Platform =  req.body.Platform;
+        let params = [ID, Email, NM, Type, Point, Level, Platform];
+
+        if(isNone(ID)) 
+            res.status(H_FAIL_BAD_REQUEST).send(B_FAIL_ID);
+        else if(isNone(NM))
+            res.status(H_FAIL_BAD_REQUEST).send(B_FAIL_ID);
+        else {
+            if(isNone(Email))       Email   = "none@none.com";
+            if(isNone(Type))        Type    = "N/A";
+            if(isNone(Platform))    Platform= "N/A";
+            generalQ(QUERY.USERS_POST,params,(result)=>{
+                if(result.fail){
+                    res.status(H_FAIL_BAD_REQUEST).send(result.error);
+                } else {
+                    res.status(H_SUCCESS_MODIFY).send(B_SUCCESS_MODIFY);
+                }
+            });
+        }
+    })
+    //todo [users]회원 정보 수정
+    .put((req,res)=>{ 
 
     })
-    .put((req,res)=>{
-
-    })
-    .delete((req,res)=>{
-
+    //todo [users]회원들 삭제 
+    .delete((req,res)=>{ 
+        res.status(H_FAIL_SERVER_ERR).send(B_FAIL_SERVER_ERR);
     })
 
 //todo
