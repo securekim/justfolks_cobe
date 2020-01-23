@@ -5,9 +5,9 @@ const mysqlConfig = config.get('mysql');
 var pool  = mysql.createPool(mysqlConfig);
 
 let QUERY = {
-    USERS_GET       : "INSERT INTO users(ID) VALUES(_GENQ_);",
+    //콤마와 _GENQ_ 같이 사용시 유의.
     USERS_POST      : "INSERT INTO users(ID, PW, Email, NM, Type, Point, Level, Platform) VALUES(_GENQ_);",
-    USERS_DELETE    : "INSERT INTO users(ID, Email) VALUES(_GENQ_);",
+    LOGIN_POST      : "SELECT ID, Email, NM, Type, Point, Level, Platform FROM users WHERE ID = ? and PW = ?"
 }
 generateQuery();
 

@@ -4,7 +4,7 @@ var express         = require('express'),
     cors            = require("cors"),
     tools           = require('./tools'),
     database        = require('./database');
-
+const crypto = require('crypto');
     ///////////////////////////////
 
     const session = require('express-session');
@@ -101,11 +101,14 @@ app.route('/users')
                 res.status(H_FAIL_BAD_REQUEST).send(B_FAIL_ID);
             } else if(isNone(NM)) {
                 res.status(H_FAIL_BAD_REQUEST).send(B_FAIL_ID);
+            } else if(isNone(PW)) {
+                res.status(H_FAIL_BAD_REQUEST).send(B_FAIL_PW);
             } else {
                 if(isNone(Email))       Email   = "none@none.com";
                 if(isNone(Type))        Type    = "NA";
                 if(isNone(Platform))    Platform= "NA";
-
+                // 한번 더 HASH
+                PW = crypto.createHash('sha256').update(PW).digest('hex');
                 let params = [ID, PW, Email, NM, Type, Point, Level, Platform];
                 generalQ(QUERY.USERS_POST,params,(result)=>{
                     if(result.fail){
@@ -130,26 +133,45 @@ app.route('/users')
 
 //todo
 app.route('/login')
+    .get((req,res)=>{ 
+        console.log("isLoggedIn");
+        if(isLogout(req)) {
+            res.status(H_FAIL_NOT_FOUND).send(B_FAIL_NOT_FOUND);
+        } else {
+            res.status(H_SUCCESS_REQ).send(B_SUCCESS_REQ);
+        }
+    })
     .post((req,res)=>{
         // req.body.ID
         // req.body.PW
-        if(SUCCESS){ //todo
-            req.session.uid = req.body.ID;
-            res.status(H_SUCCESS_REQ).send("Login Success");
+        let ID = req.body.ID,
+            PW = req.body.PW;
+        if(isNone(ID)){
+            res.status(H_FAIL_BAD_REQUEST).send(B_FAIL_ID);
+        } else if(isNone(PW)) {
+            res.status(H_FAIL_BAD_REQUEST).send(B_FAIL_PW);
         } else {
-            res.status(H_FAIL_UNAUTHORIZED).send(B_FAIL_UNAUTHORIZED);
+            //한번 더 해싱
+            PW = crypto.createHash('sha256').update(PW).digest('hex');
+            let params = [ID, PW];
+            generalQ(QUERY.LOGIN_POST,params,(result)=>{
+                if(result.fail){
+                    res.status(H_FAIL_NOT_FOUND).send(result.error);
+                } else {
+                    if(result.rows.length == 0){
+                        res.status(H_FAIL_NOT_FOUND).send(B_FAIL_NOT_FOUND);
+                    } else {
+                        req.session.uid = req.body.ID;
+                        res.status(H_SUCCESS_REQ).send(result.rows);
+                    }
+                }
+            });
         }
     })
     .delete((req,res)=>{
-        if(isLogout(req)) res.status(H_FAIL_UNAUTHORIZED).send(B_FAIL_UNAUTHORIZED);
-        res.status(H_FAIL_FORBIDDEN).send(B_FAIL_FORBIDDEN);
-        return;
-        // if(SUCCESS){ //todo
-        //     req.session.destroy();
-        //     res.status(H_SUCCESS_REQ).send("Logout Success");
-        // } else {
-        //     res.status(H_FAIL_NOT_FOUND).send("Logout Fail");
-        // }
+        console.log("logout");
+        req.session.destroy();
+        res.status(H_SUCCESS_REQ).send(B_SUCCESS_REQ);
     })
 
 //todo
