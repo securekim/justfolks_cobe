@@ -6,7 +6,7 @@ var pool  = mysql.createPool(mysqlConfig);
 
 let QUERY = {
     USERS_GET       : "INSERT INTO users(ID) VALUES(_GENQ_);",
-    USERS_POST      : "INSERT INTO users(ID, Email, NM, Type, Point, Level, Platform) VALUES(_GENQ_);",
+    USERS_POST      : "INSERT INTO users(ID, PW, Email, NM, Type, Point, Level, Platform) VALUES(_GENQ_);",
     USERS_DELETE    : "INSERT INTO users(ID, Email) VALUES(_GENQ_);",
 }
 generateQuery();
@@ -25,6 +25,7 @@ function generateQuery(){
 
 const generalQ = (query, paramArr, callback)=>{
     pool.getConnection(function(err, connection) {
+        console.log("generalQ, Connection get.");
         if(err) throw err;
         connection.query(query, paramArr, (error, rows)=> {
           connection.release();

@@ -1,13 +1,35 @@
 var express         = require('express'),
-    app             = express(),
-    cors            = require("cors"),
-    bodyParser      = require ("body-parser"),
-    expressSession  = require('express-session'),
-    RedisStore      = require('connect-redis')(expressSession),
-    redis           = require('redis'),
     config          = require('config'),
+    bodyParser      = require("body-parser"),
+    cors            = require("cors"),
     tools           = require('./tools'),
     database        = require('./database');
+
+    ///////////////////////////////
+
+    const session = require('express-session');
+    const redis = require('redis');
+    const redisClient = redis.createClient();
+    const redisStore = require('connect-redis')(session);
+    
+    const app = express();
+    
+    redisClient.on('error', (err) => {
+      console.log('Redis error: ', err);
+    });
+    
+    app.use(session({
+      secret: '_redisSessionSecret',
+      name: '_redisSession',
+      resave: false,
+      saveUninitialized: true,
+      cookie: { 
+        maxAge : 1000 * 60 * 60 * 5 //5시간
+      },
+      store: new redisStore({ host: 'localhost', port: 6379, client: redisClient, ttl: 86400 }),
+    }));
+
+    //////////////////////////////////
     
     const {
         isLogout,
@@ -22,8 +44,6 @@ var express         = require('express'),
         QUERY
     } = database;
 
-    let redisConfig = config.get('redis');
-   
 //////////////////////HEADER/////////////////////
 const H_SUCCESS_REQ         = 200;
 const H_SUCCESS_MODIFY      = 201;
@@ -31,17 +51,19 @@ const H_FAIL_BAD_REQUEST    = 400;
 const H_FAIL_UNAUTHORIZED   = 401;
 const H_FAIL_FORBIDDEN      = 403;
 const H_FAIL_NOT_FOUND      = 404;
+const H_FAIL_NOT_ACCEPTABLE = 406;
 const H_FAIL_SERVER_ERR     = 500;
 
 //////////////////////BODY/////////////////////
 const B_SUCCESS_REQ         = "Success";
 const B_SUCCESS_MODIFY      = "Modified";
-const B_FAIL_ID             = "ID is incorrect.";
+const B_FAIL_ID             = "ID or Name is incorrect.";
 const B_FAIL_PW             = "PW is incorrect.";
 const B_FAIL_LOGIN          = "ID or PW is incorrect.";
 const B_FAIL_UNAUTHORIZED   = "You are not logged in.";
 const B_FAIL_FORBIDDEN      = "You don't have permission.";
 const B_FAIL_NOT_FOUND      = "There is no data.";
+const B_FAIL_NOT_ACCEPTABLE = "Request is not acceptable."
 const B_FAIL_SERVER_ERR     = "Undefined feature.";
 
 
@@ -52,62 +74,54 @@ class RESULT {
         this.header = header;
     }
 }
-    
-redisConfig.client = redis.createClient(redisConfig.port,redisConfig.host);
 
-const session = expressSession({
-    secret : new Date().getMilliseconds()+"cobe",
-    resave : false,
-    store  : new RedisStore(redisConfig),
-    saveUninitialized:true,
-    cookie : {
-        maxAge : 1000 * 60 * 60 * 5 //5시간
-    }
-});
-
-app.use(session);
-
-app.use(bodyParser.json());
 app.use(cors());
+app.use(express.json());
 
-//todo
 app.route('/users')
     //todo [users] 전체 유저 정보 가져오기
     .get((req,res)=>{ 
-        res.status(H_FAIL_NOT_FOUND).send(B_FAIL_NOT_FOUND);
+        console.log("GET /users");
+        res.status(H_FAIL_SERVER_ERR).send(B_FAIL_SERVER_ERR);
     })
-    //todo [users] 회원가입. 필수 : ID, NM
     .post((req,res)=>{ 
-        //"INSERT INTO users(ID, Email, NM, Type, Point, Level, Platform) VALUES(_GENQ_);",
-        let ID       =   req.body.ID
-            ,Email   =   req.body.Email
-            ,NM      =   req.body.NM
-            ,Type    =   req.body.Type
-            ,Point   =   0
-            ,Level   =   0
-            ,Platform =  req.body.Platform;
-        let params = [ID, Email, NM, Type, Point, Level, Platform];
+        try{
+            console.log("POST /users");
+            //"INSERT INTO users(ID, Email, NM, Type, Point, Level, Platform) VALUES(_GENQ_);",
+            let ID       =   req.body.ID
+                ,PW      =   req.body.PW
+                ,Email   =   req.body.Email
+                ,NM      =   req.body.NM
+                ,Type    =   req.body.Type
+                ,Point   =   0
+                ,Level   =   0
+                ,Platform =  req.body.Platform;
 
-        if(isNone(ID)) 
-            res.status(H_FAIL_BAD_REQUEST).send(B_FAIL_ID);
-        else if(isNone(NM))
-            res.status(H_FAIL_BAD_REQUEST).send(B_FAIL_ID);
-        else {
-            if(isNone(Email))       Email   = "none@none.com";
-            if(isNone(Type))        Type    = "N/A";
-            if(isNone(Platform))    Platform= "N/A";
-            generalQ(QUERY.USERS_POST,params,(result)=>{
-                if(result.fail){
-                    res.status(H_FAIL_BAD_REQUEST).send(result.error);
-                } else {
-                    res.status(H_SUCCESS_MODIFY).send(B_SUCCESS_MODIFY);
-                }
-            });
+            if(isNone(ID)){
+                res.status(H_FAIL_BAD_REQUEST).send(B_FAIL_ID);
+            } else if(isNone(NM)) {
+                res.status(H_FAIL_BAD_REQUEST).send(B_FAIL_ID);
+            } else {
+                if(isNone(Email))       Email   = "none@none.com";
+                if(isNone(Type))        Type    = "NA";
+                if(isNone(Platform))    Platform= "NA";
+
+                let params = [ID, PW, Email, NM, Type, Point, Level, Platform];
+                generalQ(QUERY.USERS_POST,params,(result)=>{
+                    if(result.fail){
+                        res.status(H_FAIL_NOT_ACCEPTABLE).send(result.error);
+                    } else {
+                        res.status(H_SUCCESS_REQ).send(B_SUCCESS_REQ);
+                    }
+                });
+            }
+        }catch(e){
+            console.log(e);
         }
     })
     //todo [users]회원 정보 수정
     .put((req,res)=>{ 
-
+        res.status(H_FAIL_SERVER_ERR).send(B_FAIL_SERVER_ERR);
     })
     //todo [users]회원들 삭제 
     .delete((req,res)=>{ 
