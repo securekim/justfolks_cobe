@@ -7,7 +7,8 @@ var pool  = mysql.createPool(mysqlConfig);
 let QUERY = {
     //콤마와 _GENQ_ 같이 사용시 유의.
     USERS_POST      : "INSERT INTO users(ID, PW, Email, NM, Type, Point, Level, Platform) VALUES(_GENQ_);",
-    LOGIN_POST      : "SELECT ID, Email, NM, Type, Point, Level, Platform FROM users WHERE ID = ? and PW = ?"
+    LOGIN_POST      : "SELECT ID, Email, NM, Type, Point, Level, Platform FROM users WHERE ID = ? and PW = ?",
+    CHALLENGE_POST  : "INSERT INTO history(ID, History, Target, Point) VALUES(_GENQ_);"
 }
 generateQuery();
 

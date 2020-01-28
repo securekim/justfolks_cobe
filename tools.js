@@ -25,8 +25,18 @@ const saveLog = (req) =>{
 
 }
 
+const getChallengePoint = (History, Target) =>{
+    if(!Array.isArray(History)) return -1;
+    for(var i in History){
+        Target -= History[i].Coin;
+    }
+    if(Target == 0) return 1;
+    return 0;
+}
+
 module.exports = {
     isChallengeOK,
     isNone,
-    isLogout
+    isLogout,
+    getChallengePoint
 };

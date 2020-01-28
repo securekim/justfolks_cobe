@@ -3,7 +3,9 @@ var express         = require('express'),
     bodyParser      = require("body-parser"),
     cors            = require("cors"),
     tools           = require('./tools'),
-    database        = require('./database');
+    database        = require('./database'),
+    path            = require('path'),
+    fs              = require('fs');
 const crypto = require('crypto');
     ///////////////////////////////
 
@@ -20,6 +22,7 @@ const crypto = require('crypto');
     
     app.use(session({
       secret: '_redisSessionSecret',
+      key: '_redisKey',
       name: '_redisSession',
       resave: false,
       saveUninitialized: true,
@@ -36,7 +39,8 @@ const crypto = require('crypto');
         isNone,
         isChallengeOK,
         ERRMSG,
-        HEADER
+        HEADER,
+        getChallengePoint
     } = tools;
 
     const {
@@ -53,6 +57,7 @@ const H_FAIL_FORBIDDEN      = 403;
 const H_FAIL_NOT_FOUND      = 404;
 const H_FAIL_NOT_ACCEPTABLE = 406;
 const H_FAIL_SERVER_ERR     = 500;
+const H_FAIL_SERVER_HACKED  = 501;
 
 //////////////////////BODY/////////////////////
 const B_SUCCESS_REQ         = "Success";
@@ -62,9 +67,11 @@ const B_FAIL_PW             = "PW is incorrect.";
 const B_FAIL_LOGIN          = "ID or PW is incorrect.";
 const B_FAIL_UNAUTHORIZED   = "You are not logged in.";
 const B_FAIL_FORBIDDEN      = "You don't have permission.";
+const B_FAIL_WEIRD_DATA     = "Your data is weird.";
 const B_FAIL_NOT_FOUND      = "There is no data.";
 const B_FAIL_NOT_ACCEPTABLE = "Request is not acceptable."
 const B_FAIL_SERVER_ERR     = "Undefined feature.";
+const B_FAIL_SERVER_HACKED  = "Undefined feature.";
 
 
 class RESULT {
@@ -77,6 +84,11 @@ class RESULT {
 
 app.use(cors());
 app.use(express.json());
+app.use(express.static(__dirname + '\\public')); 
+
+app.get('/', function(req, res) {
+    res.sendFile(path.join(__dirname + '\\public\\clientCode.html'));
+});
 
 app.route('/users')
     //todo [users] 전체 유저 정보 가져오기
@@ -178,9 +190,34 @@ app.route('/login')
 app.route('/challenge')
     .get((req,res)=>{
         if(isLogout(req)) res.status(H_FAIL_UNAUTHORIZED).send(B_FAIL_UNAUTHORIZED);
-    })
+        else {
+        }
+    }) // todo : 시각
     .post((req,res)=>{
         if(isLogout(req)) res.status(H_FAIL_UNAUTHORIZED).send(B_FAIL_UNAUTHORIZED);
+        else {
+            let History = req.body.History,
+                Target  = req.body.Target,
+                ID      = req.session.uid;
+            if(isNone(History) || isNone(Target)){
+                res.status(H_FAIL_BAD_REQUEST).send(B_FAIL_WEIRD_DATA);
+            } else {
+                let Point = getChallengePoint(History, Target)
+                let params = [ID, JSON.stringify(History), Target, Point];
+                    generalQ(QUERY.CHALLENGE_POST,params,(result)=>{
+                        if(result.fail){
+                            res.status(H_FAIL_NOT_FOUND).send(result.error);
+                        } else {
+                            if(result.rows.length == 0){
+                                res.status(H_FAIL_NOT_FOUND).send(B_FAIL_NOT_FOUND);
+                            } else {
+                                req.session.uid = req.body.ID;
+                                res.status(H_SUCCESS_REQ).send(result.rows);
+                            }
+                        }
+                    });
+            }
+        }
         //req.body.ID
         //req.body.History []
         //req.body.Target
@@ -197,5 +234,20 @@ app.route('/challenge')
 //             post value is : `+req.body.value+`
 //     `)
 // })
+
+app.get('/*', function(req, res) { 
+    //todo : .. 이런거 다 삭제하기
+    res.sendfile(req.url,function(err){
+     if(err){
+        console.log(err);
+        res.status(H_FAIL_NOT_FOUND).send(B_FAIL_NOT_FOUND);
+     }
+    });
+   });
+   
+process.on('uncaughtException', function (err) {
+	//예상치 못한 예외 처리
+	console.log('uncaughtException 발생 : ' + err);
+});
 
 app.listen(80); 
