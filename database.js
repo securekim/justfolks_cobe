@@ -8,7 +8,8 @@ let QUERY = {
     //콤마와 _GENQ_ 같이 사용시 유의.
     USERS_POST      : "INSERT INTO users(ID, PW, Email, NM, Type, Point, Level, Platform) VALUES(_GENQ_);",
     LOGIN_POST      : "SELECT ID, Email, NM, Type, Point, Level, Platform FROM users WHERE ID = ? and PW = ?",
-    CHALLENGE_POST  : "INSERT INTO history(ID, History, Target, Point) VALUES(_GENQ_);"
+    HISTORY_POST    : "INSERT INTO history(ID, History, Target, Point) VALUES(_GENQ_);",
+    HISTORY_GET     : "SELECT SUM(Point) as point FROM history WHERE id = ?"
 }
 generateQuery();
 

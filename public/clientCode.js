@@ -1,17 +1,16 @@
 
 let SERVER = "http://127.0.0.1:80";
 
-/*   
-    [HEADER]
-    H_SUCCESS_REQ         = 200;
-    H_SUCCESS_MODIFY      = 201;
-    H_FAIL_BAD_REQUEST    = 400;
-    H_FAIL_UNAUTHORIZED   = 401;
-    H_FAIL_FORBIDDEN      = 403;
-    H_FAIL_NOT_FOUND      = 404;
-    H_FAIL_NOT_ACCEPTABLE = 406;
-    H_FAIL_SERVER_ERR     = 500;
-*/
+//[HEADER]
+const H_SUCCESS_REQ         = 200;
+const H_SUCCESS_MODIFY      = 201;
+const H_FAIL_BAD_REQUEST    = 400;
+const H_FAIL_UNAUTHORIZED   = 401;
+const H_FAIL_FORBIDDEN      = 403;
+const H_FAIL_NOT_FOUND      = 404;
+const H_FAIL_NOT_ACCEPTABLE = 406;
+const H_FAIL_SERVER_ERR     = 500;
+const H_FAIL_SERVER_HACKED  = 501;
 
 /*
    [Register User]
@@ -83,8 +82,6 @@ function logout(callback){
     });
 }
 
-
-
 /*
    [게임 종료 후 결과 로깅하는 부분]
    [이상한 데이터가 넘어올 시 서버에서는 해킹이라고 판단, 일단 -1점]
@@ -94,17 +91,38 @@ function logout(callback){
    Callback(JSON) : {status, result}
     
    //USAGE EXAMPLE
-        writeChallenge([{Coin: 500, Sec : 100}, {Coin: 100, Sec : 250}, {Coin: 100, Sec : 500}] , 700, (result)=>{
+        writeHistory([{Coin: 500, Sec : 100}, {Coin: 100, Sec : 250}, {Coin: 100, Sec : 500}] , 700, (result)=>{
             console.table(result);
         };
 */
-function writeChallenge(History, Target, callback){
-    GENERAL_REQ("POST", SERVER+"/challenge", {History:History, Target:Target}, (result)=>{
+function writeHistory(History, Target, callback){
+    GENERAL_REQ("POST", SERVER+"/history", {History:History, Target:Target}, (result)=>{
         callback(result);
     });
 }
 
+/*
+   [나의 포인트 가져오는 부분]
 
+   Callback(JSON) : {status, result}
+    
+   //USAGE EXAMPLE
+        readHistory((result)=>{
+            console.table(result);
+        })
+*/
+function readHistory(callback){
+    GENERAL_REQ("GET", SERVER+"/history", null, (result)=>{
+        let point = null;
+        if(result.status == H_SUCCESS_REQ){
+            try{
+                point = result.result.split(":")[1].split("}")[0]
+            }catch(e){}
+        }
+        result.result = point;
+        callback(result);
+    });
+}
 
 
 function GENERAL_REQ(method, url, jsonData, callback){

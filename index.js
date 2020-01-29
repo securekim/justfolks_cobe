@@ -1,12 +1,13 @@
-var express         = require('express'),
-    config          = require('config'),
-    bodyParser      = require("body-parser"),
-    cors            = require("cors"),
-    tools           = require('./tools'),
-    database        = require('./database'),
-    path            = require('path'),
-    fs              = require('fs');
-const crypto = require('crypto');
+const   express         = require('express'),
+        config          = require('config'),
+        bodyParser      = require("body-parser"),
+        cors            = require("cors"),
+        tools           = require('./tools'),
+        database        = require('./database'),
+        path            = require('path'),
+        fs              = require('fs'),
+        crypto          = require('crypto');
+const io = require('socket.io')(http);
     ///////////////////////////////
 
     const session = require('express-session');
@@ -15,7 +16,11 @@ const crypto = require('crypto');
     const redisStore = require('connect-redis')(session);
     
     const app = express();
+    const server = require('http').createServer(app);
     
+
+    let userPool = [];
+
     redisClient.on('error', (err) => {
       console.log('Redis error: ', err);
     });
@@ -187,10 +192,22 @@ app.route('/login')
     })
 
 //todo
-app.route('/challenge')
+app.route('/history')
     .get((req,res)=>{
         if(isLogout(req)) res.status(H_FAIL_UNAUTHORIZED).send(B_FAIL_UNAUTHORIZED);
         else {
+            let ID      = req.session.uid;
+            generalQ(QUERY.HISTORY_GET,[ID],(result)=>{
+                if(result.fail){
+                    res.status(H_FAIL_NOT_FOUND).send(result.error);
+                } else {
+                    if(result.rows.length == 0){
+                        res.status(H_FAIL_NOT_FOUND).send(B_FAIL_NOT_FOUND);
+                    } else {
+                        res.status(H_SUCCESS_REQ).send(result.rows);
+                    }
+                }
+            });
         }
     }) // todo : 시각
     .post((req,res)=>{
@@ -204,14 +221,13 @@ app.route('/challenge')
             } else {
                 let Point = getChallengePoint(History, Target)
                 let params = [ID, JSON.stringify(History), Target, Point];
-                    generalQ(QUERY.CHALLENGE_POST,params,(result)=>{
+                    generalQ(QUERY.HISTORY_POST,params,(result)=>{
                         if(result.fail){
                             res.status(H_FAIL_NOT_FOUND).send(result.error);
                         } else {
                             if(result.rows.length == 0){
                                 res.status(H_FAIL_NOT_FOUND).send(B_FAIL_NOT_FOUND);
                             } else {
-                                req.session.uid = req.body.ID;
                                 res.status(H_SUCCESS_REQ).send(result.rows);
                             }
                         }
@@ -222,6 +238,7 @@ app.route('/challenge')
         //req.body.History []
         //req.body.Target
     })
+
 
 // app.get('/get/:value',(req,res)=>{
 //     res.send(`
