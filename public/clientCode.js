@@ -125,6 +125,14 @@ function readHistory(callback){
 }
 
 
+var socket = io.connect(SERVER);
+socket.on('message', function (data) {
+    console.log(data)
+});
+
+socket.emit("message", "HI");
+
+
 function GENERAL_REQ(method, url, jsonData, callback){
     console.log("General REQ : "+method);
     let xhr = new XMLHttpRequest();

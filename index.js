@@ -7,7 +7,6 @@ const   express         = require('express'),
         path            = require('path'),
         fs              = require('fs'),
         crypto          = require('crypto');
-const io = require('socket.io')(http);
     ///////////////////////////////
 
     const session = require('express-session');
@@ -15,9 +14,20 @@ const io = require('socket.io')(http);
     const redisClient = redis.createClient();
     const redisStore = require('connect-redis')(session);
     
-    const app = express();
-    const server = require('http').createServer(app);
-    
+    const app       = express();
+    const server    = require('http').createServer(app);
+    const io        = require('socket.io')(server);
+
+    io.on('connection', (socket) => {
+        console.log('a user connected');
+        socket.on('message', (msg) => {
+          console.log("Client's MSG : "+msg);
+          io.emit('message', "Server's MSG");
+        });
+        socket.on('disconnect', () => {
+        console.log('user disconnected');
+        });
+      });
 
     let userPool = [];
 
@@ -267,4 +277,4 @@ process.on('uncaughtException', function (err) {
 	console.log('uncaughtException 발생 : ' + err);
 });
 
-app.listen(80); 
+server.listen(80); 
