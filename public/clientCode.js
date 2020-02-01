@@ -50,6 +50,7 @@ function login(ID, PW, callback){
     GENERAL_REQ("POST", SERVER+"/login", {ID:ID, PW:SHA256(PW)}, (result)=>{
         callback(result);
     })
+    socket.emit("login", {ID:ID, PW:SHA256(PW)});
 }
 
 /*
@@ -64,7 +65,8 @@ function login(ID, PW, callback){
 function isLoggedIn(callback){
     GENERAL_REQ("GET", SERVER+"/login", null, (result)=>{
         callback(result);
-    })
+    });
+    socket.emit("isLoggedIn");
 }
 
 /*
@@ -80,6 +82,7 @@ function logout(callback){
     GENERAL_REQ("DELETE", SERVER+"/login", null, (result)=>{
         callback(result);
     });
+    socket.emit("logout");
 }
 
 /*
@@ -125,13 +128,66 @@ function readHistory(callback){
 }
 
 
+///////////////////////////WEB SOCKET ////////////////////////////
+
 var socket = io.connect(SERVER);
-socket.on('message', function (data) {
-    console.log(data)
+
+socket.on('login', function (data) {
+    //Body
+    console.log("[WS] :" +JSON.stringify(data));
 });
 
-socket.emit("message", "HI");
+socket.on('isLoggedIn', function (data) {
+    //True / False
+    console.log("[WS] Logged In :" +JSON.stringify(data));
+});
 
+
+//방 참여의 기준은 내가 직접 방을 만들었냐 아니냐임.
+
+//이미 내가 만든 방이 존재하는 경우에는 되돌려주지만,
+//남이 만든 방에 이미 참여한 경우 방을 찾아주지 않음.
+function multi_getRoom(){
+    socket.emit("getRoom");
+}
+
+//이미 내가 만든 경우에는 안됨. (내가 만든 경우만)
+function multi__makeRoom(){
+    socket.emit("makeRoom");
+}
+
+//내가 만든 방 기준
+socket.on('getRoom', function (data) {
+    //{"fail":false,"result":{"hostID":"myID","Total":2,"IDS":["myID"],"Target":null,"histories":{}}}
+    console.log("[WS] getRoom :" + JSON.stringify(data));
+});
+
+//hostID: "myID"
+//hostNM: "myNickName"
+//Level: 0
+//Point: 0
+//Total: 2
+//IDS: ["myID"]
+//Target: 900
+
+// 내가 참여를 해놓고 새로 방을 팔 수도 있다. 
+socket.on('makeRoom', function (data) {
+    // [WS] makeRoom :{"fail":true,"result":"Your room is already exist."}
+    console.log("[WS] makeRoom :"+JSON.stringify(data));
+});
+
+
+function multi_writeHistory(History){
+    socket.emit("writeHistory", History);
+}
+
+socket.on('writeHistory', function (data) {
+    console.log("[WS] writeHistory :" +JSON.stringify(data));
+});
+
+socket.on('endGame', function (data) {
+    console.log("[WS] endGame :" +JSON.stringify(data));
+});
 
 function GENERAL_REQ(method, url, jsonData, callback){
     console.log("General REQ : "+method);

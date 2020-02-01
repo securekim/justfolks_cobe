@@ -17,51 +17,135 @@ const   express         = require('express'),
     const app       = express();
     const server    = require('http').createServer(app);
     const io        = require('socket.io')(server);
+    const sharedsession = require("express-socket.io-session");
 
-    io.on('connection', (socket) => {
-        console.log('a user connected');
-        socket.on('message', (msg) => {
-          console.log("Client's MSG : "+msg);
-          io.emit('message', "Server's MSG");
-        });
-        socket.on('disconnect', () => {
-        console.log('user disconnected');
-        });
-      });
-
-    let userPool = [];
-
-    redisClient.on('error', (err) => {
-      console.log('Redis error: ', err);
-    });
-    
-    app.use(session({
-      secret: '_redisSessionSecret',
-      key: '_redisKey',
-      name: '_redisSession',
-      resave: false,
-      saveUninitialized: true,
-      cookie: { 
-        maxAge : 1000 * 60 * 60 * 5 //5시간
-      },
-      store: new redisStore({ host: 'localhost', port: 6379, client: redisClient, ttl: 86400 }),
-    }));
 
     //////////////////////////////////
     
     const {
         isLogout,
+        isLogoutWS,
         isNone,
         isChallengeOK,
         ERRMSG,
         HEADER,
-        getChallengePoint
+        getChallengePoint,
+        getIntoRoom,
+        makeRoom
     } = tools;
 
     const {
         generalQ,
         QUERY
     } = database;
+
+    ///////////////////////////////////////
+
+    redisClient.on('error', (err) => {
+      console.log('Redis error: ', err);
+    });
+    
+    var generalSession = session({
+        secret: '_redisSessionSecret',
+        key: '_redisKey',
+        name: '_redisSession',
+        resave: false,
+        saveUninitialized: true,
+        cookie: { 
+          maxAge : 1000 * 60 * 60 * 5 //5시간
+        },
+        store: new redisStore({ host: 'localhost', port: 6379, client: redisClient, ttl: 86400 }),
+      })
+
+    app.use(generalSession);
+    io.use(sharedsession(generalSession));
+
+    io.on('connection', (socket) => {
+        console.log('a user connected');
+        socket.on('login',(userData)=>{
+            //userData : {ID, PW}
+            let ID = userData.ID,
+                PW = userData.PW;
+            if(isNone(ID)){
+                socket.emit('login', {fail: true, result: B_FAIL_ID});
+            } else if(isNone(PW)) {
+                socket.emit('login', {fail: true, result: B_FAIL_PW});
+            } else {
+                //한번 더 해싱
+                PW = crypto.createHash('sha256').update(PW).digest('hex');
+                let params = [ID, PW];
+                generalQ(QUERY.LOGIN_POST,params,(result)=>{
+                    if(result.fail){
+                        socket.emit('login', {fail: true, result: B_FAIL_NOT_ACCEPTABLE});
+                    } else {
+                        if(result.rows.length == 0){
+                            socket.emit('login', {fail: true, result: B_FAIL_NOT_FOUND});
+                        } else {
+                            socket.handshake.session.uid = ID;
+                            socket.handshake.session.NM = result.rows[0].NM;
+                            socket.handshake.session.Level = result.rows[0].Level;
+                            socket.handshake.session.Point = result.rows[0].Point;
+                            socket.handshake.session.save();
+                            socket.emit('login', {fail: true, result: B_SUCCESS_REQ});
+                        }
+                    }
+                });
+            }
+        });
+
+        socket.on('getRoom', (msg) => {
+            if(isLogoutWS(socket)){
+                socket.emit('getRoom', {fail: true, result: "Not Logged In."});
+            } else {
+                let result = getIntoRoom(socket);
+                if(!result.fail)
+                    socket.join("ROOM_"+result.result.hostID);
+                socket.emit('getRoom', result);
+                
+            }
+        });
+        
+        socket.on('makeRoom', (msg) => {
+            if(isLogoutWS(socket)){
+                socket.emit('makeRoom', {fail: true, result: "Not Logged In."});
+            } else {
+                let room = makeRoom(socket,2);
+                if(room){
+                    socket.join("ROOM_"+room.hostID);
+                    socket.emit('makeRoom', {fail: false, result: room});
+                } else {
+                    socket.emit('makeRoom', {fail: true, result: "Your room is already exist."});
+                }
+            }
+        });
+
+        socket.on('writeHistory', (msg) => {
+            if(isLogoutWS(socket)){
+                socket.emit('writeHistory', {fail: true, result: "Not Logged In."});
+            } else {
+                //TODO : WriteHistory and Broadcast
+            }
+        });
+
+        socket.on('logout', () => {
+            delete socket.handshake.session.uid;
+            socket.handshake.session.save();
+        });
+        
+        socket.on('isLoggedIn', () => {
+            socket.emit('isLoggedIn', {fail: isLogoutWS(socket), result: "N/A"});
+        });
+
+        socket.on('disconnect', () => {
+            console.log('user disconnected');
+        });
+
+
+
+
+      });
+
+    let userPool = [];
 
 //////////////////////HEADER/////////////////////
 const H_SUCCESS_REQ         = 200;
@@ -274,7 +358,7 @@ app.get('/*', function(req, res) {
    
 process.on('uncaughtException', function (err) {
 	//예상치 못한 예외 처리
-	console.log('uncaughtException 발생 : ' + err);
+	console.log('uncaughtException : ' + err);
 });
 
 server.listen(80); 

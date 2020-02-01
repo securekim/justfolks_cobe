@@ -27,7 +27,6 @@ function generateQuery(){
 
 const generalQ = (query, paramArr, callback)=>{
     pool.getConnection(function(err, connection) {
-        console.log("generalQ, Connection get.");
         if(err) throw err;
         connection.query(query, paramArr, (error, rows)=> {
           connection.release();
