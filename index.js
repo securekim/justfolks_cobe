@@ -19,7 +19,6 @@ const   express         = require('express'),
     const io        = require('socket.io')(server);
     const sharedsession = require("express-socket.io-session");
 
-
     //////////////////////////////////
     
     const {
@@ -31,7 +30,11 @@ const   express         = require('express'),
         HEADER,
         getChallengePoint,
         getIntoRoom,
-        makeRoom
+        makeRoom,
+        amIjoined,
+        getUserInfo,
+        amIhost,
+        addHistoryToRoom
     } = tools;
 
     const {
@@ -97,11 +100,19 @@ const   express         = require('express'),
             if(isLogoutWS(socket)){
                 socket.emit('getRoom', {fail: true, result: "Not Logged In."});
             } else {
-                let result = getIntoRoom(socket);
-                if(!result.fail)
-                    socket.join("ROOM_"+result.result.hostID);
-                socket.emit('getRoom', result);
-                
+                //{fail:true, result:""};
+                let joinedRoom = amIjoined(socket);
+                if(joinedRoom.fail){
+                    let result = getIntoRoom(socket);
+                    if(!result.fail){
+                        socket.join("ROOM_"+result.result.hostID);
+                        let userInfo = getUserInfo(socket)
+                        io.to("ROOM_"+result.result.hostID).emit('joinedRoom',{roomInfo:result.result ,newUser:userInfo});
+                    }
+                    socket.emit('getRoom', result);
+                } else {
+                    socket.emit('getRoom', {fail:true, result: joinedRoom.result});
+                }
             }
         });
         
@@ -109,8 +120,9 @@ const   express         = require('express'),
             if(isLogoutWS(socket)){
                 socket.emit('makeRoom', {fail: true, result: "Not Logged In."});
             } else {
+                let joinedRoom = amIjoined(socket);
                 let room = makeRoom(socket,2);
-                if(room){
+                if(room && joinedRoom.fail){
                     socket.join("ROOM_"+room.hostID);
                     socket.emit('makeRoom', {fail: false, result: room});
                 } else {
@@ -119,11 +131,51 @@ const   express         = require('express'),
             }
         });
 
-        socket.on('writeHistory', (msg) => {
+        socket.on('startGame', (msg) => {
+            if(isLogoutWS(socket)){
+                socket.emit('startGame', {fail: true, result: "Not Logged In."});
+            } else {
+                let joinedRoom = amIjoined(socket);
+                if(joinedRoom.fail){
+                    socket.emit('startGame', {fail: true, result: "You are not joined to the room."});
+                } else {
+                    let iAmHost = amIhost(socket);
+                    //io.sockets.adapter.rooms[key].length
+                    if(!iAmHost.fail){
+                        //내가 방장이고, 방 내부 인원이 total 이상 전부 다 있을 때
+                        console.log("startGame. You are the host.");
+                        io.to("ROOM_"+joinedRoom.result.hostID).emit('startGame',{fail: false, result: iAmHost.result});
+                    } else {
+                        socket.emit('startGame', {fail: true, result: "You are not a host."});
+                    }
+                    //io.to(room).emit('chatMessage',chat);
+                }
+            }
+        });
+
+        socket.on('exitRoom', (msg) => {
+            if(isLogoutWS(socket)){
+                socket.emit('exitRoom', {fail: true, result: "Not Logged In."});
+            } else {
+                let joinedRoom = amIjoined(socket);
+                if(joinedRoom.fail){ //내가 방에 있나? fail이다.
+                    socket.emit('exitRoom', {fail: true, result: "You are not in the room."});
+                } else {
+                    socket.leave("ROOM_"+joinedRoom.result.hostID);
+                    socket.emit('exitRoom', {fail: false, result: joinedRoom.result});
+                }
+            }
+        });
+
+        socket.on('writeHistory', (history) => {
             if(isLogoutWS(socket)){
                 socket.emit('writeHistory', {fail: true, result: "Not Logged In."});
             } else {
                 //TODO : WriteHistory and Broadcast
+                let result = addHistoryToRoom(socket, history);
+                socket.emit("writeHistory", result);
+                if(!result.fail)
+                    io.to("ROOM_"+result.result.hostID).emit('roomHistory',{fail: false, result: result.result});
             }
         });
 

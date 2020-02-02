@@ -145,14 +145,13 @@ socket.on('isLoggedIn', function (data) {
 
 //방 참여의 기준은 내가 직접 방을 만들었냐 아니냐임.
 
-//이미 내가 만든 방이 존재하는 경우에는 되돌려주지만,
-//남이 만든 방에 이미 참여한 경우 방을 찾아주지 않음.
+//이미 방에 참여 되어있던 경우 fail이 true로 옴
 function multi_getRoom(){
     socket.emit("getRoom");
 }
 
 //이미 내가 만든 경우에는 안됨. (내가 만든 경우만)
-function multi__makeRoom(){
+function multi_makeRoom(){
     socket.emit("makeRoom");
 }
 
@@ -161,6 +160,12 @@ socket.on('getRoom', function (data) {
     //{"fail":false,"result":{"hostID":"myID","Total":2,"IDS":["myID"],"Target":null,"histories":{}}}
     console.log("[WS] getRoom :" + JSON.stringify(data));
 });
+
+//UI 없이 그냥 방이 꽉차면 스타트게임!
+socket.on('fullRoom', function(){
+    console.log("[WS] Room is full.")
+    multi_startGame();
+})
 
 //hostID: "myID"
 //hostNM: "myNickName"
@@ -176,7 +181,28 @@ socket.on('makeRoom', function (data) {
     console.log("[WS] makeRoom :"+JSON.stringify(data));
 });
 
+//게임 시작!
+function multi_startGame(){
+    socket.emit("startGame");
+}
 
+//게임이 시작되었습니다 알림.
+socket.on('startGame', function (data) {
+    //{"fail":false,"result":{"hostID":"myID","hostNM":"myNickName","Level":0,"Point":0,"Total":2,"IDS":["myID","myID2"],"Target":600,"histories":{}}}
+    console.log("[WS] startGame :"+JSON.stringify(data));
+});
+
+//누군가 들어왔습니다 알림.
+socket.on('joinedRoom', function (data) {
+    console.log("[WS] Someone challenged me  :"+JSON.stringify(data));
+    if(data.roomInfo.Total <= data.roomInfo.IDS.length){
+        //방에 사람이 꽉차부렀네
+        multi_startGame();
+    }
+});
+
+//Confirm 후 History 를 서버에 보낸다. 
+//  multi_writeHistory([{Coin: 500, Sec : 100}, {Coin: 100, Sec : 250}, {Coin: 100, Sec : 500}])
 function multi_writeHistory(History){
     socket.emit("writeHistory", History);
 }
@@ -185,6 +211,12 @@ socket.on('writeHistory', function (data) {
     console.log("[WS] writeHistory :" +JSON.stringify(data));
 });
 
+//다른사람들이 한것도 올라옴.
+socket.on('roomHistory', function(data){
+    console.log("[WS] roomHistory :" +JSON.stringify(data));
+})
+
+//게임이 종료되었다는 알림.
 socket.on('endGame', function (data) {
     console.log("[WS] endGame :" +JSON.stringify(data));
 });

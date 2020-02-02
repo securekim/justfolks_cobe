@@ -34,7 +34,6 @@ const saveLog = (req) =>{
 
 //Level 1 : 100 ~ 1000
 //Level 2 : 100 ~ 2000
-// ....
 //평균레벨 1.2 뭐 이런거는 올림.
 const getRandomTarget = (Level) =>{
     return (Math.ceil(Math.random() * 10 * (Level+1))) * 100;
@@ -43,6 +42,14 @@ const getRandomTarget = (Level) =>{
 
 function randomRange(n1, n2) {
     return Math.floor( (Math.random() * (n2 - n1 + 1)) + n1 );
+}
+
+const getUserInfo = (socket) =>{
+    const ID = socket.handshake.session.uid;
+    const NM = socket.handshake.session.NM;
+    const Level = socket.handshake.session.Level;
+    const Point = socket.handshake.session.Point;
+    return {ID: ID, NM: NM, Level: Level, Point: Point};
 }
 
 const makeRoom = (socket, total) =>{ // total : 방의 전체 인원
@@ -95,6 +102,17 @@ const getIntoRoom = (socket) =>{
 //    rooms.push(addMemberToRoom(socket, room));
 }
 
+const updateRoom = (socket, roomInfo) =>{
+    let joined = amIjoined(socket);
+    if(joined.fail) return {fail:true, result:"You are not in the room"};
+    roomsJSON["ROOM_"+joined.result.hostID] = roomInfo;
+    for(var i in rooms){
+        if(room[i].hostID == joined.result.hostID){
+            rooms[i] = roomInfo;
+        }
+    }
+}
+
 //특정 룸에 멤버가 들어오고 값들 재계산.
 //코인 값도 레벨 평균에 맞춰서 재계산
 const addMemberToRoom = (socket, room) =>{
@@ -116,6 +134,20 @@ const deleteMyRoom = (socket) =>{
     }
     delete roomsJSON["ROOM_"+socket.handshake.session.uid];
     return false;
+}
+
+const amIjoined = (socket) => {
+    for(var i in socket.rooms){
+        if(i.includes("ROOM_",0)) return {fail:false, result:roomsJSON[i]}; 
+    }
+    return {fail:true, result:""};
+}
+
+const amIhost = (socket) => {
+    let joined = amIjoined(socket);
+    //내가 방에 있고, 방의 아이디와 내 아이디가 같은 경우.
+    if(!joined.fail && socket.handshake.session.uid == joined.result.hostID) return {fail: false, result:joined.result};
+    return {fail: true, result:""}; 
 }
 
 const getChallengePoint = (History, Target) =>{
@@ -145,16 +177,31 @@ const whoIsTheBest = (histories, Target) =>{
     return bestID;
 }
 
-//특정 방에서 사용 됨. histories 에 기록을 추가한다.
-//history = [{Coin: 500, Sec : 100}, {Coin: 100, Sec : 250}, {Coin: 100, Sec : 500}]
-const addHistories = (socket, histories, history) =>{
+const addHistoryToRoom = (socket, myHistory) =>{
+    let joined = amIjoined(socket);
+    if(joined.fail) return {fail:true, result:"You are not in the room"};
+    let ID = socket.handshake.session.uid;
+    /*
+    let roomInfo = {
+        ...
+            histories : {ID : {Coinsum, Secsum}, ...}
+        }
+    */
+   //myHistory = [{Coin: 500, Sec : 100}, {Coin: 100, Sec : 250}, {Coin: 100, Sec : 500}]
     let Coinsum = 0;
     let Secsum = 0;
-    for(var i in history) {
-        Coinsum += history[i].Coin;
-        Secsum += history[i].Sec;
+    for(var i in myHistory) {
+        Coinsum += myHistory[i].Coin;
+        Secsum += myHistory[i].Sec;
     }
-    histories[socket.handshake.session.uid] = {Coin: Coinsum, Sec: Secsum};
+    
+    roomsJSON["ROOM_"+joined.result.hostID].histories[ID] = {Coinsum : Coinsum, Secsum : Secsum};
+    for(var i in rooms){
+        if(rooms[i].hostID == joined.result.hostID){
+            rooms[i] = roomsJSON["ROOM_"+joined.result.hostID];
+        }
+    }
+    return {fail:false, result:roomsJSON["ROOM_"+joined.result.hostID]};
 }
 
 module.exports = {
@@ -164,6 +211,10 @@ module.exports = {
     isLogoutWS,
     getChallengePoint,
     getIntoRoom,
-    makeRoom
+    makeRoom,
+    amIjoined,
+    amIhost,
+    getUserInfo,
+    addHistoryToRoom
 };
 
