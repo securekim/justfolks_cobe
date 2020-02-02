@@ -34,7 +34,9 @@ const   express         = require('express'),
         amIjoined,
         getUserInfo,
         amIhost,
-        addHistoryToRoom
+        addHistoryToRoom,
+        whoIsTheBest,
+        delMemberToRoom
     } = tools;
 
     const {
@@ -107,7 +109,7 @@ const   express         = require('express'),
                     if(!result.fail){
                         socket.join("ROOM_"+result.result.hostID);
                         let userInfo = getUserInfo(socket)
-                        io.to("ROOM_"+result.result.hostID).emit('joinedRoom',{roomInfo:result.result ,newUser:userInfo});
+                        io.to("ROOM_"+result.result.hostID).emit('changedRoomP',{roomInfo:result.result ,newUser:userInfo});
                     }
                     socket.emit('getRoom', result);
                 } else {
@@ -153,7 +155,8 @@ const   express         = require('express'),
             }
         });
 
-        socket.on('exitRoom', (msg) => {
+        //방에서 탈출
+        socket.on('exitRoom', () => {
             if(isLogoutWS(socket)){
                 socket.emit('exitRoom', {fail: true, result: "Not Logged In."});
             } else {
@@ -161,8 +164,12 @@ const   express         = require('express'),
                 if(joinedRoom.fail){ //내가 방에 있나? fail이다.
                     socket.emit('exitRoom', {fail: true, result: "You are not in the room."});
                 } else {
-                    socket.leave("ROOM_"+joinedRoom.result.hostID);
+                    let roomInfo = delMemberToRoom(socket, joinedRoom.result);
+                    let userInfo = getUserInfo(socket);
+                    updateRoom(socket, roomInfo);
+                    io.to("ROOM_"+joinedRoom.result.hostID).emit('changedRoomP',{roomInfo:joinedRoom.result ,delUser:userInfo});
                     socket.emit('exitRoom', {fail: false, result: joinedRoom.result});
+                    socket.leave("ROOM_"+joinedRoom.result.hostID);
                 }
             }
         });
@@ -174,8 +181,14 @@ const   express         = require('express'),
                 //TODO : WriteHistory and Broadcast
                 let result = addHistoryToRoom(socket, history);
                 socket.emit("writeHistory", result);
-                if(!result.fail)
+                if(!result.fail){
                     io.to("ROOM_"+result.result.hostID).emit('roomHistory',{fail: false, result: result.result});
+                    //현재 존재하는 인원 수 이상의 사람이 작성 한 경우.
+                    if(Object.keys(result.result.histories).length >= result.result.IDS.length){
+                        let winner = whoIsTheBest(result.result.histories, result.result.Target);
+                        io.to("ROOM_"+result.result.hostID).emit('endGame',{fail: false, result: winner});
+                    }
+                }
             }
         });
 

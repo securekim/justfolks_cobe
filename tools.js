@@ -123,6 +123,18 @@ const addMemberToRoom = (socket, room) =>{
     return room
 }
 
+
+//특정 룸에 멤버가 들어오고 값들 재계산.
+//코인 값도 레벨 평균에 맞춰서 재계산
+const delMemberToRoom = (socket, room) =>{
+    //arr.splice(arr.indexOf("A"),1); // "A"를 찾아서 삭제한다.
+    room.IDS.splice(room.IDS.indexOf("socket.handshake.session.uid"),1);
+    room.Level = room.Level - socket.handshake.session.Level / room.IDS.length;
+    room.Point = room.Point - socket.handshake.session.Point / room.IDS.length;
+    room.Target = getRandomTarget(room.Level)
+    return room
+}
+
 //내가 방장인 룸 삭제.
 const deleteMyRoom = (socket) =>{
     for(var i in rooms){
@@ -215,6 +227,8 @@ module.exports = {
     amIjoined,
     amIhost,
     getUserInfo,
-    addHistoryToRoom
+    addHistoryToRoom,
+    whoIsTheBest,
+    delMemberToRoom
 };
 

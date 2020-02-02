@@ -192,8 +192,8 @@ socket.on('startGame', function (data) {
     console.log("[WS] startGame :"+JSON.stringify(data));
 });
 
-//누군가 들어왔습니다 알림.
-socket.on('joinedRoom', function (data) {
+//누군가 들어왔거나 나갔다.
+socket.on('changedRoomP', function (data) {
     console.log("[WS] Someone challenged me  :"+JSON.stringify(data));
     if(data.roomInfo.Total <= data.roomInfo.IDS.length){
         //방에 사람이 꽉차부렀네
@@ -219,7 +219,20 @@ socket.on('roomHistory', function(data){
 //게임이 종료되었다는 알림.
 socket.on('endGame', function (data) {
     console.log("[WS] endGame :" +JSON.stringify(data));
+    multi_exitGame();
 });
+
+function multi_exitGame(){
+
+}
+
+function multi_endGame(){
+
+}
+
+function multi_exitRoom(){
+    socket.emit("exitRoom");
+}
 
 function GENERAL_REQ(method, url, jsonData, callback){
     console.log("General REQ : "+method);
