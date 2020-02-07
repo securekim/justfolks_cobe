@@ -6,10 +6,10 @@ var pool  = mysql.createPool(mysqlConfig);
 
 let QUERY = {
     //콤마와 _GENQ_ 같이 사용시 유의.
-    USERS_POST      : "INSERT INTO users(ID, PW, Email, NM, Type, Point, Level, Platform) VALUES(_GENQ_);",
-    LOGIN_POST      : "SELECT ID, Email, NM, Type, Point, Level, Platform FROM users WHERE ID = ? and PW = ?",
-    HISTORY_POST    : "INSERT INTO history(ID, History, Target, Point) VALUES(_GENQ_);",
-    HISTORY_GET     : "SELECT SUM(Point) as point FROM history WHERE id = ?"
+    USERS_POST      : "INSERT INTO users(ID, PW, Email, NM, type, point, level, platform) VALUES(_GENQ_);",
+    LOGIN_POST      : "SELECT ID, Email, NM, type, point, level, platform FROM users WHERE ID = ? and PW = ?",
+    HISTORY_POST    : "INSERT INTO history(ID, History, target, point) VALUES(_GENQ_);",
+    HISTORY_GET     : "SELECT SUM(point) as point FROM history WHERE id = ?"
 }
 generateQuery();
 

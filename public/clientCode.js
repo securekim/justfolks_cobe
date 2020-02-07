@@ -18,8 +18,8 @@ const H_FAIL_SERVER_HACKED  = 501;
    PW : 패스워드
    EMail : 비워도 됨
    NM : 닉네임
-   Type : kakao / facebook / google / NA
-   Platform : iOS / Android / Web / NA
+   type : kakao / facebook / google / NA
+   platform : iOS / Android / Web / NA
 
    Callback(JSON) : {status, result}
     
@@ -28,8 +28,8 @@ const H_FAIL_SERVER_HACKED  = 501;
             console.table(result);
         })
 */
-function register(ID, PW, Email, NM, Type, Platform, callback){
-    GENERAL_REQ("POST", SERVER+"/users", {ID:ID, PW:SHA256(PW), Email:Email, NM:NM, Type:Type, Platform:Platform}, (result)=>{
+function register(ID, PW, Email, NM, type, platform, callback){
+    GENERAL_REQ("POST", SERVER+"/users", {ID:ID, PW:SHA256(PW), Email:Email, NM:NM, type:type, platform:platform}, (result)=>{
         callback(result);
     });
 }
@@ -89,7 +89,7 @@ function logout(callback){
    [게임 종료 후 결과 로깅하는 부분]
    [이상한 데이터가 넘어올 시 서버에서는 해킹이라고 판단, 일단 -1점]
    History : [{Coin: 'CoinType', Sec : 'Press Time(ms)'}, ...] 
-   Target  : Target
+   target  : target
 
    Callback(JSON) : {status, result}
     
@@ -98,8 +98,8 @@ function logout(callback){
             console.table(result);
         };
 */
-function writeHistory(History, Target, callback){
-    GENERAL_REQ("POST", SERVER+"/history", {History:History, Target:Target}, (result)=>{
+function writeHistory(History, target, callback){
+    GENERAL_REQ("POST", SERVER+"/history", {History:History, target:target}, (result)=>{
         callback(result);
     });
 }
@@ -165,7 +165,7 @@ function multi_exitRoom(status){
 
 //내가 만든 방 기준
 socket.on('getRoom', function (data) {
-    //{"fail":false,"result":{"hostID":"myID","Total":2,"IDS":["myID"],"Target":null,"histories":{}}}
+    //{"fail":false,"result":{"hostID":"myID","total":2,"IDS":["myID"],"target":null,"histories":{}}}
     console.log("[WS] getRoom :" + JSON.stringify(data));
 });
 
@@ -181,11 +181,11 @@ socket.on('exitRoom', function(data){
 
 //hostID: "myID"
 //hostNM: "myNickName"
-//Level: 0
-//Point: 0
-//Total: 2
+//level: 0
+//point: 0
+//total: 2
 //IDS: ["myID"]
-//Target: 900
+//target: 900
 
 // 내가 참여를 해놓고 새로 방을 팔 수도 있다. 
 socket.on('makeRoom', function (data) {
@@ -200,14 +200,14 @@ function multi_startGame(){
 
 //게임이 시작되었습니다 알림.
 socket.on('startGame', function (data) {
-    //{"fail":false,"result":{"hostID":"myID","hostNM":"myNickName","Level":0,"Point":0,"Total":2,"IDS":["myID","myID2"],"Target":600,"histories":{}}}
+    //{"fail":false,"result":{"hostID":"myID","hostNM":"myNickName","level":0,"point":0,"total":2,"IDS":["myID","myID2"],"target":600,"histories":{}}}
     console.log("[WS] startGame :"+JSON.stringify(data));
 });
 
 //누군가 들어왔거나 나갔다.
 socket.on('playerChanged', function (data) {
     console.log("[WS] Room info is changed  :"+JSON.stringify(data));
-    if(data.roomInfo.Total <= data.roomInfo.IDS.length){
+    if(data.roomInfo.total <= data.roomInfo.IDS.length){
         //방에 사람이 꽉차부렀네
         multi_startGame();
     }
@@ -254,7 +254,7 @@ function GENERAL_REQ(method, url, jsonData, callback){
     console.log("General REQ : "+method);
     let xhr = new XMLHttpRequest();
     xhr.open(method, url, true);
-    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.setRequestHeader("Content-type", "application/json");
     xhr.onreadystatechange = () => {
         if(xhr.readyState == 4 && typeof callback != "undefined") //여러번 호출되므로 종료시에만
             callback({status:xhr.status, result:xhr.responseText});

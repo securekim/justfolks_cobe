@@ -39,7 +39,9 @@ const   express         = require('express'),
         delMemberToRoom,
         updateRoom,
         deleteRoom,
-        deleteMyRoom
+        deleteMyRoom,
+        roomsJSON,
+        rooms
     } = tools;
 
     const {
@@ -91,8 +93,8 @@ const   express         = require('express'),
                         } else {
                             socket.handshake.session.uid = ID;
                             socket.handshake.session.NM = result.rows[0].NM;
-                            socket.handshake.session.Level = result.rows[0].Level;
-                            socket.handshake.session.Point = result.rows[0].Point;
+                            socket.handshake.session.level = result.rows[0].level;
+                            socket.handshake.session.point = result.rows[0].point;
                             socket.handshake.session.save();
                             socket.emit('login', {fail: true, result: B_SUCCESS_REQ});
                         }
@@ -144,16 +146,19 @@ const   express         = require('express'),
                 if(joinedRoom.fail){
                     socket.emit('startGame', {fail: true, result: "You are not joined to the room."});
                 } else {
-                    let iAmHost = amIhost(socket);
+                    let iAmHost = amIhost(socket,joinedRoom);
                     //io.sockets.adapter.rooms[key].length
                     if(!iAmHost.fail){
                         //내가 방장이고, 방 내부 인원이 total 이상 전부 다 있을 때
                         console.log("startGame. You are the host.");
-                        io.to("ROOM_"+joinedRoom.result.hostID).emit('startGame',{fail: false, result: iAmHost.result});
-                    } else {
-                        socket.emit('startGame', {fail: true, result: "You are not a host."});
-                    }
-                    //io.to(room).emit('chatMessage',chat);
+                        joinedRoom.result.status = "start"
+                        updateRoom(socket, joinedRoom.result);
+                        io.to("ROOM_"+joinedRoom.result.hostID).emit('startGame',{fail: false, result: joinedRoom.result});
+                        
+                    } 
+                    // else {
+                    //     socket.emit('startGame', {fail: true, result: "You are not a host."});
+                    // }
                 }
             }
         });
@@ -167,13 +172,14 @@ const   express         = require('express'),
                 if(joinedRoom.fail){ //내가 방에 있나? fail이다.
                     socket.emit('exitRoom', {fail: true, result: "You are not in the room."});
                 } else {
-                    let roomInfo = delMemberToRoom(socket, joinedRoom.result);
+                    let updatedRoom = delMemberToRoom(socket, joinedRoom.result);
                     let userInfo = getUserInfo(socket);
-                    updateRoom(socket, roomInfo);
+                    updatedRoom.result.status = "end"
+                    updateRoom(socket, updatedRoom.result);
                     deleteMyRoom(socket); //방장인 경우 방 삭제.
-                    io.to("ROOM_"+joinedRoom.result.hostID).emit('playerChanged',{roomInfo:joinedRoom.result ,delUser:userInfo});
-                    socket.emit('exitRoom', {fail: false, result: joinedRoom.result});
-                    socket.leave("ROOM_"+joinedRoom.result.hostID);
+                    io.to("ROOM_"+updatedRoom.result.hostID).emit('playerChanged',{roomInfo:updatedRoom.result ,delUser:userInfo});
+                    socket.emit('exitRoom', {fail: false, result: updatedRoom.result});
+                    socket.leave("ROOM_"+updatedRoom.result.hostID);
                 }
             }
         });
@@ -189,7 +195,7 @@ const   express         = require('express'),
                     io.to("ROOM_"+result.result.hostID).emit('roomHistory',{fail: false, result: result.result});
                     //현재 존재하는 인원 수 이상의 사람이 작성 한 경우.
                     if(Object.keys(result.result.histories).length >= result.result.IDS.length){
-                        let winner = whoIsTheBest(result.result.histories, result.result.Target);
+                        let winner = whoIsTheBest(result.result.histories, result.result.target);
                         io.to("ROOM_"+result.result.hostID).emit('endGame',{fail: false, result: winner});
                     }
                 }
@@ -262,15 +268,15 @@ app.route('/users')
     .post((req,res)=>{ 
         try{
             console.log("POST /users");
-            //"INSERT INTO users(ID, Email, NM, Type, Point, Level, Platform) VALUES(_GENQ_);",
+            //"INSERT INTO users(ID, Email, NM, type, point, level, platform) VALUES(_GENQ_);",
             let ID       =   req.body.ID
                 ,PW      =   req.body.PW
                 ,Email   =   req.body.Email
                 ,NM      =   req.body.NM
-                ,Type    =   req.body.Type
-                ,Point   =   0
-                ,Level   =   0
-                ,Platform =  req.body.Platform;
+                ,type    =   req.body.type
+                ,point   =   0
+                ,level   =   0
+                ,platform =  req.body.platform;
 
             if(isNone(ID)){
                 res.status(H_FAIL_BAD_REQUEST).send(B_FAIL_ID);
@@ -280,11 +286,11 @@ app.route('/users')
                 res.status(H_FAIL_BAD_REQUEST).send(B_FAIL_PW);
             } else {
                 if(isNone(Email))       Email   = "none@none.com";
-                if(isNone(Type))        Type    = "NA";
-                if(isNone(Platform))    Platform= "NA";
+                if(isNone(type))        type    = "NA";
+                if(isNone(platform))    platform= "NA";
                 // 한번 더 HASH
                 PW = crypto.createHash('sha256').update(PW).digest('hex');
-                let params = [ID, PW, Email, NM, Type, Point, Level, Platform];
+                let params = [ID, PW, Email, NM, type, point, level, platform];
                 generalQ(QUERY.USERS_POST,params,(result)=>{
                     if(result.fail){
                         res.status(H_FAIL_NOT_ACCEPTABLE).send(result.error);
@@ -313,7 +319,7 @@ app.route('/login')
         if(isLogout(req)) {
             res.status(H_FAIL_NOT_FOUND).send(B_FAIL_NOT_FOUND);
         } else {
-            res.status(H_SUCCESS_REQ).send(B_SUCCESS_REQ);
+            res.status(H_SUCCESS_REQ).send(req.session.uid);
         }
     })
     .post((req,res)=>{
@@ -372,13 +378,13 @@ app.route('/history')
         if(isLogout(req)) res.status(H_FAIL_UNAUTHORIZED).send(B_FAIL_UNAUTHORIZED);
         else {
             let History = req.body.History,
-                Target  = req.body.Target,
+                target  = req.body.target,
                 ID      = req.session.uid;
-            if(isNone(History) || isNone(Target)){
+            if(isNone(History) || isNone(target)){
                 res.status(H_FAIL_BAD_REQUEST).send(B_FAIL_WEIRD_DATA);
             } else {
-                let Point = getChallengePoint(History, Target)
-                let params = [ID, JSON.stringify(History), Target, Point];
+                let point = getChallengePoint(History, target)
+                let params = [ID, JSON.stringify(History), target, point];
                     generalQ(QUERY.HISTORY_POST,params,(result)=>{
                         if(result.fail){
                             res.status(H_FAIL_NOT_FOUND).send(result.error);
@@ -394,7 +400,7 @@ app.route('/history')
         }
         //req.body.ID
         //req.body.History []
-        //req.body.Target
+        //req.body.target
     })
 
 

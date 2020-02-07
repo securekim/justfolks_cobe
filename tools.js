@@ -1,10 +1,10 @@
 
-let rooms = []; // [{hostNM, IDS[], Level, Point}, ...]
+let rooms = []; // [{hostNM, IDS[], level, point}, ...]
 
 
-let roomsJSON = {}; // {roomID:{IDS[], Level, Point, Total}}
+let roomsJSON = {}; // {roomID:{IDS[], level, point, total}}
 //history 를 보고 이게 정상인지 확인
-//[{Coin, Sec}, ...,], Target
+//[{Coin, Sec}, ...,], target
 const isChallengeOK=(history, target)=>{
 
 }
@@ -32,11 +32,11 @@ const saveLog = (req) =>{
 
 }
 
-//Level 1 : 100 ~ 1000
-//Level 2 : 100 ~ 2000
+//level 1 : 100 ~ 1000
+//level 2 : 100 ~ 2000
 //평균레벨 1.2 뭐 이런거는 올림.
-const getRandomTarget = (Level) =>{
-    return (Math.ceil(Math.random() * 10 * (Level+1))) * 100;
+const getRandomTarget = (level) =>{
+    return (Math.ceil(Math.random() * 10 * (level+1))) * 100;
 }
 
 
@@ -47,9 +47,9 @@ function randomRange(n1, n2) {
 const getUserInfo = (socket) =>{
     const ID = socket.handshake.session.uid;
     const NM = socket.handshake.session.NM;
-    const Level = socket.handshake.session.Level;
-    const Point = socket.handshake.session.Point;
-    return {ID: ID, NM: NM, Level: Level, Point: Point};
+    const level = socket.handshake.session.level;
+    const point = socket.handshake.session.point;
+    return {ID: ID, NM: NM, level: level, point: point};
 }
 
 const makeRoom = (socket, total) =>{ // total : 방의 전체 인원
@@ -61,12 +61,13 @@ const makeRoom = (socket, total) =>{ // total : 방의 전체 인원
         let roomInfo = {
             hostID : ID,
             hostNM : socket.handshake.session.NM,
-            Level : socket.handshake.session.Level,
-            Point : socket.handshake.session.Point,
-            Total : total,
+            level : socket.handshake.session.level,
+            point : socket.handshake.session.point,
+            total : total,
             IDS : [ID],
-            Target : getRandomTarget(socket.handshake.session.Level),
-            GameTime : "",
+            status : "ready",
+            target : getRandomTarget(socket.handshake.session.level),
+            gameTime : "",
             histories : {}
         }
         roomsJSON["ROOM_"+ID] = roomInfo;
@@ -87,9 +88,9 @@ const getIntoRoom = (socket) =>{
 
     for(var i in rooms){
         var room = rooms[i];
-        //인원이 꽉 차있는 경우
-        if(room.IDS.length >= room.Total) 
-            return {fail: true, result: "No room."};
+        //인원이 꽉 차있거나, 게임이 시작했거나, 게임이 끝난 경우엔 다른 룸을 찾는다. 
+        if(room.IDS.length >= room.total || room.status == "start" || room.status == "end") 
+            continue;
         addMemberToRoom(socket, room);
         rooms[i] = room;   
         roomsJSON["ROOM_"+room.hostID] = room;
@@ -132,22 +133,28 @@ const deleteRoom = (socket) =>{
 //코인 값도 레벨 평균에 맞춰서 재계산
 const addMemberToRoom = (socket, room) =>{
     room.IDS.push(socket.handshake.session.uid);
-    room.Level = room.Level + socket.handshake.session.Level / room.IDS.length;
-    room.Point = room.Point + socket.handshake.session.Point / room.IDS.length;
-    room.Target = getRandomTarget(room.Level)
+    room.level = room.level + socket.handshake.session.level / room.IDS.length;
+    room.point = room.point + socket.handshake.session.point / room.IDS.length;
+    room.target = getRandomTarget(room.level)
     return room
 }
 
 
-//특정 룸에 멤버가 들어오고 값들 재계산.
+//특정 룸에 멤버가 삭제되고 값들 재계산.
 //코인 값도 레벨 평균에 맞춰서 재계산
 const delMemberToRoom = (socket, room) =>{
     //arr.splice(arr.indexOf("A"),1); // "A"를 찾아서 삭제한다.
-    room.IDS.splice(room.IDS.indexOf("socket.handshake.session.uid"),1);
-    room.Level = room.Level - socket.handshake.session.Level / room.IDS.length;
-    room.Point = room.Point - socket.handshake.session.Point / room.IDS.length;
-    room.Target = getRandomTarget(room.Level)
-    return room
+    let result = {fail:true, result:""};
+    try{
+        room.IDS.splice(room.IDS.indexOf("socket.handshake.session.uid"),1);
+        room.level = room.level - socket.handshake.session.level / room.IDS.length;
+        room.point = room.point - socket.handshake.session.point / room.IDS.length;
+        room.target = getRandomTarget(room.level)
+        result = {fail:false, result:room};
+    } catch(e){
+        console.log(e);
+    }
+    return result;
 }
 
 //내가 방장인 룸 삭제.
@@ -170,19 +177,18 @@ const amIjoined = (socket) => {
     return {fail:true, result:""};
 }
 
-const amIhost = (socket) => {
-    let joined = amIjoined(socket);
+const amIhost = (socket, joined) => {
     //내가 방에 있고, 방의 아이디와 내 아이디가 같은 경우.
     if(!joined.fail && socket.handshake.session.uid == joined.result.hostID) return {fail: false, result:joined.result};
     return {fail: true, result:""}; 
 }
 
-const getChallengePoint = (History, Target) =>{
+const getChallengePoint = (History, target) =>{
     if(!Array.isArray(History)) return -1;
     for(var i in History){
-        Target -= History[i].Coin;
+        target -= History[i].Coin;
     }
-    if(Target == 0) return 1;
+    if(target == 0) return 1;
     return 0;
 }
 
@@ -193,11 +199,11 @@ const getChallengePoint = (History, Target) =>{
 //  네트워크 상황이 안좋아서 조금이라도 더 늦게 도착한 패킷.
 //  -> 시작도 조금 늦었을 것이라고 가정
 //histories : {ID : {Coinsum, Secsum}}
-const whoIsTheBest = (histories, Target) =>{
+const whoIsTheBest = (histories, target) =>{
     let bestSec = 9999999999999;
     let bestID = null;
     for(var i in histories){
-        if(histories[i].Coinsum == Target){
+        if(histories[i].Coinsum == target){
             if( bestSec > histories[i].Secsum ){
                 bestID = i;
             }
@@ -249,6 +255,8 @@ module.exports = {
     delMemberToRoom,
     updateRoom,
     deleteRoom,
-    deleteMyRoom
+    deleteMyRoom,
+    roomsJSON,
+    rooms
 };
 
