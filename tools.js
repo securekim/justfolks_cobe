@@ -66,6 +66,7 @@ const makeRoom = (socket, total) =>{ // total : 방의 전체 인원
             Total : total,
             IDS : [ID],
             Target : getRandomTarget(socket.handshake.session.Level),
+            GameTime : "",
             histories : {}
         }
         roomsJSON["ROOM_"+ID] = roomInfo;
@@ -107,11 +108,25 @@ const updateRoom = (socket, roomInfo) =>{
     if(joined.fail) return {fail:true, result:"You are not in the room"};
     roomsJSON["ROOM_"+joined.result.hostID] = roomInfo;
     for(var i in rooms){
-        if(room[i].hostID == joined.result.hostID){
+        if(rooms[i].hostID == joined.result.hostID){
             rooms[i] = roomInfo;
         }
     }
 }
+
+const deleteRoom = (socket) =>{
+    let joined = amIjoined(socket);
+    if(joined.fail) return {fail:true, result:"You are not in the room"};
+    //roomsJSON["ROOM_"+joined.result.hostID] = roomInfo;
+    delete roomsJSON["ROOM_"+joined.result.hostID];
+    for(var i in rooms){
+        if(rooms[i].hostID == joined.result.hostID){
+            rooms.splice(i,1);
+            break;
+        }
+    }
+}
+
 
 //특정 룸에 멤버가 들어오고 값들 재계산.
 //코인 값도 레벨 평균에 맞춰서 재계산
@@ -174,14 +189,16 @@ const getChallengePoint = (History, Target) =>{
 // 첫번째. 맞춘 사람 ID.
 // 두번째. 맞춘 사람들 중에 가장 history 시간의 합이 적은사람.
 // 아무도 맞춘 사람이 없으면 null
-// 시간이 완전히 같으면 ? 네트워크상 조금이라도 더 먼저 도착한 패킷의 ID...
+// 시간이 완전히 같으면 ? 
+//  네트워크 상황이 안좋아서 조금이라도 더 늦게 도착한 패킷.
+//  -> 시작도 조금 늦었을 것이라고 가정
 //histories : {ID : {Coinsum, Secsum}}
 const whoIsTheBest = (histories, Target) =>{
     let bestSec = 9999999999999;
     let bestID = null;
     for(var i in histories){
-        if(histories[i].Coin == Target){
-            if( bestSec > histories[i].Coin ){
+        if(histories[i].Coinsum == Target){
+            if( bestSec > histories[i].Secsum ){
                 bestID = i;
             }
         }
@@ -229,6 +246,9 @@ module.exports = {
     getUserInfo,
     addHistoryToRoom,
     whoIsTheBest,
-    delMemberToRoom
+    delMemberToRoom,
+    updateRoom,
+    deleteRoom,
+    deleteMyRoom
 };
 

@@ -36,7 +36,10 @@ const   express         = require('express'),
         amIhost,
         addHistoryToRoom,
         whoIsTheBest,
-        delMemberToRoom
+        delMemberToRoom,
+        updateRoom,
+        deleteRoom,
+        deleteMyRoom
     } = tools;
 
     const {
@@ -66,7 +69,7 @@ const   express         = require('express'),
     io.use(sharedsession(generalSession));
 
     io.on('connection', (socket) => {
-        console.log('a user connected');
+        console.log(socket.handshake.session.uid + ' connected');
         socket.on('login',(userData)=>{
             //userData : {ID, PW}
             let ID = userData.ID,
@@ -109,7 +112,7 @@ const   express         = require('express'),
                     if(!result.fail){
                         socket.join("ROOM_"+result.result.hostID);
                         let userInfo = getUserInfo(socket)
-                        io.to("ROOM_"+result.result.hostID).emit('changedRoomP',{roomInfo:result.result ,newUser:userInfo});
+                        io.to("ROOM_"+result.result.hostID).emit('playerChanged',{roomInfo:result.result ,newUser:userInfo});
                     }
                     socket.emit('getRoom', result);
                 } else {
@@ -167,7 +170,8 @@ const   express         = require('express'),
                     let roomInfo = delMemberToRoom(socket, joinedRoom.result);
                     let userInfo = getUserInfo(socket);
                     updateRoom(socket, roomInfo);
-                    io.to("ROOM_"+joinedRoom.result.hostID).emit('changedRoomP',{roomInfo:joinedRoom.result ,delUser:userInfo});
+                    deleteMyRoom(socket); //방장인 경우 방 삭제.
+                    io.to("ROOM_"+joinedRoom.result.hostID).emit('playerChanged',{roomInfo:joinedRoom.result ,delUser:userInfo});
                     socket.emit('exitRoom', {fail: false, result: joinedRoom.result});
                     socket.leave("ROOM_"+joinedRoom.result.hostID);
                 }
@@ -202,14 +206,9 @@ const   express         = require('express'),
         });
 
         socket.on('disconnect', () => {
-            console.log('user disconnected');
+            console.log(socket.handshake.session.uid+' disconnected');
         });
-
-
-
-
       });
-
     let userPool = [];
 
 //////////////////////HEADER/////////////////////
