@@ -9,7 +9,8 @@ let QUERY = {
     USERS_POST      : "INSERT INTO users(ID, PW, Email, NM, type, point, level, platform) VALUES(_GENQ_);",
     LOGIN_POST      : "SELECT ID, Email, NM, type, point, level, platform FROM users WHERE ID = ? and PW = ?",
     HISTORY_POST    : "INSERT INTO history(ID, History, target, point) VALUES(_GENQ_);",
-    HISTORY_GET     : "SELECT SUM(point) as point FROM history WHERE id = ?"
+    HISTORY_GET     : "SELECT SUM(point) as point FROM history WHERE id = ?",
+    //HISTORY_WS      : "INSERT INTO history(ID, History, target, point) VALUES(_GENQ_);"
 }
 generateQuery();
 
