@@ -41,7 +41,8 @@ const   express         = require('express'),
         deleteRoom,
         deleteMyRoom,
         roomsJSON,
-        rooms
+        rooms,
+        toJSON
     } = tools;
 
     const {
@@ -75,7 +76,7 @@ const   express         = require('express'),
         socket.on('login',(userData)=>{
             console.log("login");
 		try{
-		userData = JSON.parse(userData.replace(/\'/g, '"'));
+            userData = toJSON(userData);
 		
 	    console.log(userData);
             console.log(userData.ID + " " +userData.PW);

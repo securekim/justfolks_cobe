@@ -39,6 +39,22 @@ const getRandomTarget = (level) =>{
     return (Math.ceil(Math.random() * 10 * (level+1))) * 100;
 }
 
+function toJSON(stringOrJSON) {
+    if(typeof stringOrJSON != 'object'){
+        try {
+            stringOrJSON = JSON.parse(stringOrJSON);
+        } catch (e) {
+            //It's not a JSON.
+            try{
+                stringOrJSON = JSON.parse(stringOrJSON.replace(/\'/g, '"'))
+            } catch(e) {
+                stringOrJSON = null;
+            }
+        }
+    }
+    return stringOrJSON;
+}
+
 
 function randomRange(n1, n2) {
     return Math.floor( (Math.random() * (n2 - n1 + 1)) + n1 );
@@ -257,6 +273,7 @@ module.exports = {
     deleteRoom,
     deleteMyRoom,
     roomsJSON,
-    rooms
+    rooms,
+    toJSON
 };
 
