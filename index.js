@@ -103,7 +103,7 @@ const   express         = require('express'),
                             socket.handshake.session.level = result.rows[0].level;
                             socket.handshake.session.point = result.rows[0].point;
                             socket.handshake.session.save();
-                            socket.emit('login', {fail: true, result: B_SUCCESS_REQ});
+                            socket.emit('login', {fail: false, result: B_SUCCESS_REQ});
                         }
                     }
                 });
@@ -226,7 +226,7 @@ const   express         = require('express'),
         
         socket.on('isLoggedIn', () => {
             console.log("isLoggedIn : "+isLogoutWS(socket));
-            socket.emit('isLoggedIn', {fail: isLogoutWS(socket), result: "N/A"});
+            socket.emit('isLoggedIn', {fail: isLogoutWS(socket), result: socket.handshake.session.uid});
         });
 
         socket.on('disconnect', () => {
