@@ -1,5 +1,6 @@
 
-let SERVER = "http://127.0.0.1:80";
+let SERVER = window.location.href;
+ 
 
 //[HEADER]
 const H_SUCCESS_REQ         = 200;
@@ -29,7 +30,7 @@ const H_FAIL_SERVER_HACKED  = 501;
         })
 */
 function register(ID, PW, Email, NM, type, platform, callback){
-    GENERAL_REQ("POST", SERVER+"/users", {ID:ID, PW:SHA256(PW), Email:Email, NM:NM, type:type, platform:platform}, (result)=>{
+    GENERAL_REQ("POST", SERVER+"users", {ID:ID, PW:SHA256(PW), Email:Email, NM:NM, type:type, platform:platform}, (result)=>{
         callback(result);
     });
 }
@@ -47,7 +48,7 @@ function register(ID, PW, Email, NM, type, platform, callback){
         })
 */
 function login(ID, PW, callback){
-    GENERAL_REQ("POST", SERVER+"/login", {ID:ID, PW:SHA256(PW)}, (result)=>{
+    GENERAL_REQ("POST", SERVER+"login", {ID:ID, PW:SHA256(PW)}, (result)=>{
         callback(result);
     })
     socket.emit("login", {ID:ID, PW:SHA256(PW)});
@@ -63,7 +64,7 @@ function login(ID, PW, callback){
         })
 */
 function isLoggedIn(callback){
-    GENERAL_REQ("GET", SERVER+"/login", null, (result)=>{
+    GENERAL_REQ("GET", SERVER+"login", null, (result)=>{
         callback(result);
     });
     socket.emit("isLoggedIn");
@@ -79,7 +80,7 @@ function isLoggedIn(callback){
         })
 */
 function logout(callback){
-    GENERAL_REQ("DELETE", SERVER+"/login", null, (result)=>{
+    GENERAL_REQ("DELETE", SERVER+"login", null, (result)=>{
         callback(result);
     });
     socket.emit("logout");
@@ -99,7 +100,7 @@ function logout(callback){
         };
 */
 function writeHistory(History, target, callback){
-    GENERAL_REQ("POST", SERVER+"/history", {History:History, target:target}, (result)=>{
+    GENERAL_REQ("POST", SERVER+"history", {History:History, target:target}, (result)=>{
         callback(result);
     });
 }
@@ -115,7 +116,7 @@ function writeHistory(History, target, callback){
         })
 */
 function readHistory(callback){
-    GENERAL_REQ("GET", SERVER+"/history", null, (result)=>{
+    GENERAL_REQ("GET", SERVER+"history", null, (result)=>{
         let point = null;
         if(result.status == H_SUCCESS_REQ){
             try{
