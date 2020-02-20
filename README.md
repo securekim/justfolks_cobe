@@ -31,12 +31,12 @@ port            = 3082
 #bind-address           = 127.0.0.1
 ```
 ### sudo service mysql restart
-### Firewall (AWS)
+### Firewall (AWS CONSOLE - POLICY)
 ### restore database
 ```
+sed -i '' 's/utf8mb4_0900_ai_ci/utf8mb4_unicode_ci/g' [filename].sql
 mysql -u root -p cobe < [filename].sql
 ```
-
 
 ## 2. Install Redis
 sudo apt install redis
