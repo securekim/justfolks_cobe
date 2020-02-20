@@ -73,6 +73,8 @@ const   express         = require('express'),
     io.on('connection', (socket) => {
         console.log(socket.handshake.session.uid + ' connected');
         socket.on('login',(userData)=>{
+            console.log("login");
+            console.log(userData);
             //userData : {ID, PW}
             let ID = userData.ID,
                 PW = userData.PW;
@@ -104,6 +106,7 @@ const   express         = require('express'),
         });
 
         socket.on('getRoom', (msg) => {
+            console.log("getRoom");
             if(isLogoutWS(socket)){
                 socket.emit('getRoom', {fail: true, result: "Not Logged In."});
             } else {
@@ -124,6 +127,7 @@ const   express         = require('express'),
         });
         
         socket.on('makeRoom', (msg) => {
+            console.log("makeRoom");
             if(isLogoutWS(socket)){
                 socket.emit('makeRoom', {fail: true, result: "Not Logged In."});
             } else {
@@ -139,6 +143,7 @@ const   express         = require('express'),
         });
 
         socket.on('startGame', (msg) => {
+            console.log("startGame");
             if(isLogoutWS(socket)){
                 socket.emit('startGame', {fail: true, result: "Not Logged In."});
             } else {
@@ -165,6 +170,7 @@ const   express         = require('express'),
 
         //방에서 탈출
         socket.on('exitRoom', () => {
+            console.log("exitRoom");
             if(isLogoutWS(socket)){
                 socket.emit('exitRoom', {fail: true, result: "Not Logged In."});
             } else {
@@ -185,6 +191,8 @@ const   express         = require('express'),
         });
 
         socket.on('writeHistory', (history) => {
+            console.log("writeHistory");
+            console.log(history);
             if(isLogoutWS(socket)){
                 socket.emit('writeHistory', {fail: true, result: "Not Logged In."});
             } else {
@@ -203,15 +211,18 @@ const   express         = require('express'),
         });
 
         socket.on('logout', () => {
+            console.log("logout");
             delete socket.handshake.session.uid;
             socket.handshake.session.save();
         });
         
         socket.on('isLoggedIn', () => {
+            console.log("isLoggedIn");
             socket.emit('isLoggedIn', {fail: isLogoutWS(socket), result: "N/A"});
         });
 
         socket.on('disconnect', () => {
+            console.log("disconnect");
             console.log(socket.handshake.session.uid+' disconnected');
         });
       });
