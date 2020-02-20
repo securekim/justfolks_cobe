@@ -74,7 +74,11 @@ const   express         = require('express'),
         console.log(socket.handshake.session.uid + ' connected');
         socket.on('login',(userData)=>{
             console.log("login");
-            console.log(userData);
+		try{
+		userData = JSON.parse(userData.replace(/\'/g, '"'));
+		
+	    console.log(userData);
+            console.log(userData.ID + " " +userData.PW);
             //userData : {ID, PW}
             let ID = userData.ID,
                 PW = userData.PW;
@@ -103,6 +107,9 @@ const   express         = require('express'),
                     }
                 });
             }
+		}catch(e){
+			socket.emit('login', {fail: true, result: B_FAIL_WEIRD_DATA});
+		}
         });
 
         socket.on('getRoom', (msg) => {
@@ -217,7 +224,7 @@ const   express         = require('express'),
         });
         
         socket.on('isLoggedIn', () => {
-            console.log("isLoggedIn");
+            console.log("isLoggedIn : "+isLogoutWS(socket));
             socket.emit('isLoggedIn', {fail: isLogoutWS(socket), result: "N/A"});
         });
 
@@ -242,7 +249,7 @@ const H_FAIL_SERVER_HACKED  = 501;
 //////////////////////BODY/////////////////////
 const B_SUCCESS_REQ         = "Success";
 const B_SUCCESS_MODIFY      = "Modified";
-const B_FAIL_ID             = "ID or Name is incorrect.";
+const B_FAIL_ID             = "ID is incorrect.";
 const B_FAIL_PW             = "PW is incorrect.";
 const B_FAIL_LOGIN          = "ID or PW is incorrect.";
 const B_FAIL_UNAUTHORIZED   = "You are not logged in.";
