@@ -1,7 +1,42 @@
-// Converted from UnityScript to C# at http://www.M2H.nl/files/js_to_c.php - by Mike Hergaarden
-// Do test the code! You usually need to change a few small bits.
 
+//socket io -> 
+//https://archive.codeplex.com/?p=socketio4net
+//Install-Package SocketIO4Net.Client -Version 0.6.26
 
+/*
+//다른 파일에서 사용하는 방법 : 
+//cobeLib.cs 파일을 동일 폴더에 넣고 아래와 같이 사용하면 됨.
+// 단, 아래 패키지 설치 필요
+https://github.com/nhn/socket.io-client-unity3d/releases/download/v.1.1.2/socket.io-client-unity3d.unitypackage
+
+        var cobe = new cobeLib();
+
+        try{
+            cobe.init(init_ => {
+                Debug.Log(init_);
+                //CALLBACK : connected
+                
+                cobe.isloggedIn(isLoggedIn_=>{
+                    Debug.Log(isLoggedIn_);
+                    //{"fail":true}
+                });
+                cobe.login("myID","myPW", login_=>{
+                    Debug.Log(login_);
+                    //{"fail":false,"result":"Success"}
+                    cobe.isloggedIn(isLoggedIn_=>{
+                        Debug.Log(isLoggedIn_);
+                        //{"fail":false,"result":"myID"}
+                    });
+                });
+                cobe.isloggedIn(isLoggedIn_=>{
+                    Debug.Log(isLoggedIn_);
+                });
+            });
+        } catch {
+            Debug.Log("ERROR ! ");
+        }
+
+*/
 //socket io -> 
 //https://archive.codeplex.com/?p=socketio4net
 //Install-Package SocketIO4Net.Client -Version 0.6.26
@@ -41,58 +76,43 @@ static int H_FAIL_SERVER_HACKED  = 501;
         // 접속 완료 이벤트 처리
 
         socket.On("connect", () => {
-            Debug.Log("Connected.");
-            callback("CALLBACK TEST : connected");
+            callback("CALLBACK : connected");
         });
 
         /////////// SOCKET ON - RES PACKET FROM SERVER /////////
 
 
-        //방을 가져왔다. 방이 하나도 없으면 만들어서 가져온다.
-        socket.On("getRoom", (string data) => {
-            //{"fail":false,"result":{"hostID":"myID","total":2,"IDS":["myID"],"target":null,"histories":{}}}
-            Debug.Log("getRoom : " + data);
-        });
-
         //방이 꽉차면 
         //  TODO : 스타트게임!
         socket.On("fullRoom", (string data)=>{
             Debug.Log("fullRoom : "+data);
-//            multi_startGame();
+            startGame((data)=>{
+                Debug.Log("startGame : " + data);
+            });
         });
 
-        socket.On("exitRoom", (string data)=>{
-             Debug.Log("exitRoom : " + data);
-        });
-
-        //hostID: "myID"
-        //hostNM: "myNickName"
-        //level: 0
-        //point: 0
-        //total: 2
-        //IDS: ["myID"]
-        //target: 900
-
-        // 내가 참여를 해놓고 새로 방을 팔 수도 있다. 
-        socket.On("makeRoom", (string data)=>{
-            // [WS] makeRoom :{"fail":true,"result":"Your room is already exist."}
-            Debug.Log("makeRoom : " + data);
-        });
-
-        //게임이 시작되었습니다 알림.
-        socket.On("startGame", (string data) => {
-            //{"fail":false,"result":{"hostID":"myID","hostNM":"myNickName","level":0,"point":0,"total":2,"IDS":["myID","myID2"],"target":600,"histories":{}}}
-            Debug.Log("startGame : " + data);
-        });
-
-        //누군가 들어왔거나 나갔다.
+        //누군가 들어왔거나 나갔을 때 동작
         socket.On("playerChanged", (string data) => {
             Debug.Log("playerChanged : " + data);
 //            TODO : 방에 사람이 꽉차면 게임을 시작해 주세요
 //            if(data.roomInfo.total <= data.roomInfo.IDS.length){
 //              방에 사람이 꽉차부렀네
-//                multi_startGame();
+                startGame((data)=>{
+                    Debug.Log("startGame : " + data);
+                });
 //            }
+        });
+        
+        //방의 변경 정보를 받습니다.
+        socket.On("roomHistory", (string data)=>{
+            Debug.Log("roomHistory : "+data);
+        });
+        
+        //게임이 종료되었다는 알림.
+        socket.On("endGame", (string data) => {
+            Debug.Log("endGame : "+data);
+            //게임을 종료합니다
+            exitGame("endGame");
         });
     }
 
@@ -123,6 +143,71 @@ static int H_FAIL_SERVER_HACKED  = 501;
             callback(data);
         });
     }
+    
+    //TODO : TEST
+    public void getRoom(System.Action<string> callback){
+        socket.Emit("getRoom");
+        
+        //방을 가져왔다. 방이 하나도 없으면 만들어서 가져온다.
+        socket.On("getRoom", (string data) => {
+            //{"fail":false,"result":{"hostID":"myID","total":2,"IDS":["myID"],"target":null,"histories":{}}}
+            callback(data);
+        });
+    }
+    
+    //TODO : TEST
+    public void makeRoom(System.Action<string> callback){
+        socket.Emit("makeRoom");
+        
+        // 내가 참여를 해놓고 새로 방을 팔 수도 있다. 
+        socket.On("makeRoom", (string data)=>{
+            // [WS] makeRoom :{"fail":true,"result":"Your room is already exist."}
+            callback(data);
+        });
+    }
+
+    //TODO : TEST
+    public void exitRoom(System.Action<string> callback){
+        socket.Emit("exitRoom");
+        socket.On("exitRoom", (string data)=>{
+            callback(data);
+        });
+    }
+
+
+    //TODO : TEST
+    public void startGame(System.Action<string> callback){
+        socket.Emit("startGame");
+        //게임이 시작되었습니다 알림.
+        socket.On("startGame", (string data) => {
+            //{"fail":false,"result":{"hostID":"myID","hostNM":"myNickName","level":0,"point":0,"total":2,"IDS":["myID","myID2"],"target":600,"histories":{}}}
+            callback(data);
+        });
+    }
+
+
+    //TODO : TEST
+    //writeHistory([{Coin: 500, Sec : 100}, {Coin: 100, Sec : 250}, {Coin: 100, Sec : 500}])
+    public void writeHistory(string history, System.Action<string> callback){
+        socket.Emit("writeHistory", history);
+        //게임이 시작되었습니다 알림.
+        socket.On("writeHistory", (string data) => {
+            //{"fail":false,"result":{"hostID":"myID","hostNM":"myNickName","level":0,"point":0,"total":2,"IDS":["myID","myID2"],"target":600,"histories":{}}}
+            callback(data);
+        });
+    }
+
+    //TODO : TEST
+    // 게임을 종료합니다.
+//게임 참여 후 정상 종료시 status 가 endGame
+//게임 참여 후 도중에 강제 종료시 status 가 exitGame
+    public void exitGame(string status){
+        //socket.Emit("login", "{'ID':'"+ID+"','PW':'"+PW_Hashed+"'}");
+        socket.Emit("exitGame", "{'status':'"+status+"'}");
+        socket.Emit("exitRoom", "{'status':'"+status+"'}");
+    }
+
+
 
     public static string computeSHA256(string rawData)  
         {  
