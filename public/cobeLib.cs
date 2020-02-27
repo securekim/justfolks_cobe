@@ -13,30 +13,39 @@ https://github.com/nhn/socket.io-client-unity3d/releases/download/v.1.1.2/socket
 
         try{
             cobe.init(init_ => {
-                Debug.Log(init_);
                 //CALLBACK : connected
+                Debug.Log(init_);
                 
+                cobe.register("myID5", "myPW", "myEmail5@email.com", "myNickName", "NA", "Web", result=>{
+                    //실패시 : {"fail":true,"result":{"code":"ER_DUP_ENTRY","errno":1062,"sqlMessage":"Duplicate entry 'myID' ...
+                    //성공시 : {"fail":false,"result":"Success"}
+                    Debug.Log(result);
+                });
+
                 cobe.isloggedIn(isLoggedIn_=>{
-                    Debug.Log(isLoggedIn_);
                     //{"fail":true}
+                    Debug.Log("isLoggedIn1 "+isLoggedIn_);
                 });
                 cobe.login("myID","myPW", login_=>{
-                    Debug.Log(login_);
                     //{"fail":false,"result":"Success"}
+                    Debug.Log(login_);
+
                     cobe.isloggedIn(isLoggedIn_=>{
-                        Debug.Log(isLoggedIn_);
                         //{"fail":false,"result":"myID"}
+                        Debug.Log("isLoggedIn2 "+isLoggedIn_);
                     });
                 });
                 cobe.isloggedIn(isLoggedIn_=>{
-                    Debug.Log(isLoggedIn_);
+                    //{"fail":true}
+                    Debug.Log("isLoggedIn3 "+isLoggedIn_);
                 });
             });
         } catch {
             Debug.Log("ERROR ! ");
         }
-
+        
 */
+
 //socket io -> 
 //https://archive.codeplex.com/?p=socketio4net
 //Install-Package SocketIO4Net.Client -Version 0.6.26
@@ -86,8 +95,8 @@ static int H_FAIL_SERVER_HACKED  = 501;
         //  TODO : 스타트게임!
         socket.On("fullRoom", (string data)=>{
             Debug.Log("fullRoom : "+data);
-            startGame((data)=>{
-                Debug.Log("startGame : " + data);
+            startGame(result=>{
+                Debug.Log("startGame : " + result);
             });
         });
 
@@ -97,8 +106,8 @@ static int H_FAIL_SERVER_HACKED  = 501;
 //            TODO : 방에 사람이 꽉차면 게임을 시작해 주세요
 //            if(data.roomInfo.total <= data.roomInfo.IDS.length){
 //              방에 사람이 꽉차부렀네
-                startGame((data)=>{
-                    Debug.Log("startGame : " + data);
+                startGame(result=>{
+                    Debug.Log("startGame : " + result);
                 });
 //            }
         });
@@ -115,22 +124,23 @@ static int H_FAIL_SERVER_HACKED  = 501;
             exitGame("endGame");
         });
     }
+//ID, PW, Email, NM, type, platform
+    public void register(string ID, string PW, string Email, string NM, string type, string platform, System.Action<string> callback){
+        string PW_Hashed=computeSHA256(PW);
+        Debug.Log("register ID: "+ID+" PW : "+PW+" Hashed: "+PW_Hashed);
+//{ID:ID, PW:SHA256(PW), Email:Email, NM:NM, type:type, platform:platform}
+        socket.Emit("register", "{'ID':'"+ID+"','PW':'"+PW_Hashed+"','Email':'"+Email+"','NM':'"+NM+"','type':'"+type+"','platform':'"+platform+"'}");
+
+        socket.On("register", (string data) => {
+            //Body
+            callback(data);
+        });
+    }
 
     public void login(string ID, string PW, System.Action<string> callback){
         string PW_Hashed=computeSHA256(PW);
         Debug.Log("login ID: "+ID+" PW : "+PW+" Hashed: "+PW_Hashed);
-
-//{ID:'myID', PW:'c6baabf1af85ddeb1c066f9bc07262e74910da4fa69bc3cf482ea2c6dcbc
-        //가긴 가는데 파싱 불가
-        //socket.Emit("login", "{ID:'"+ID+"', PW:'"+PW_Hashed+"'}");
-        //오긴옴
-        //socket.Emit("login", "{ID:"+ID+", PW:"+PW_Hashed+"}");
         socket.Emit("login", "{'ID':'"+ID+"','PW':'"+PW_Hashed+"'}");
-
-        // socket.Emit(
-        // "login",       // 이벤트명
-        // "{ \"ID\": \"myID\", \"PW\": \"c6baabf1af85ddeb1c066f9bc07262e74910da4fa69bc3cf482ea2c6dcbc\" }"  // 데이터 (Json 텍스트)
-        // );
         socket.On("login", (string data) => {
             //Body
             callback(data);

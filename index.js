@@ -137,6 +137,7 @@ const   express         = require('express'),
             try{
                 userData = toJSON(userData);
                 console.log("register!");
+                console.log(userData);
                 //"INSERT INTO users(ID, Email, NM, type, point, level, platform) VALUES(_GENQ_);",
                 let     ID      =   userData.ID,
                         PW      =   userData.PW,
