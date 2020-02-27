@@ -78,8 +78,6 @@ const   express         = require('express'),
 		try{
             userData = toJSON(userData);
 		
-	    console.log(userData);
-            console.log(userData.ID + " " +userData.PW);
             //userData : {ID, PW}
             let ID = userData.ID,
                 PW = userData.PW;
@@ -113,6 +111,7 @@ const   express         = require('express'),
 		}
         });
 
+        
         socket.on('getRoom', (msg) => {
             console.log("getRoom");
             if(isLogoutWS(socket)){
@@ -131,6 +130,46 @@ const   express         = require('express'),
                 } else {
                     socket.emit('getRoom', {fail:true, result: joinedRoom.result});
                 }
+            }
+        });
+
+        socket.on('register', (userData) => {
+            try{
+                userData = toJSON(userData);
+                console.log("register!");
+                //"INSERT INTO users(ID, Email, NM, type, point, level, platform) VALUES(_GENQ_);",
+                let     ID      =   userData.ID,
+                        PW      =   userData.PW,
+                        Email   =   userData.Email,
+                        NM      =   userData.NM,
+                        type    =   userData.type,
+                        point   =   0,
+                        level   =   0,
+                        platform =  userData.platform;
+    
+                if(isNone(ID)){
+                    socket.emit('register', {fail:true, result: B_FAIL_ID});
+                } else if(isNone(NM)) {
+                    socket.emit('register', {fail:true, result: B_FAIL_ID});
+                } else if(isNone(PW)) {
+                    socket.emit('register', {fail:true, result: B_FAIL_PW});
+                } else {
+                    if(isNone(Email))       Email   = "none@none.com";
+                    if(isNone(type))        type    = "NA";
+                    if(isNone(platform))    platform= "NA";
+                    // 한번 더 HASH
+                    PW = crypto.createHash('sha256').update(PW).digest('hex');
+                    let params = [ID, PW, Email, NM, type, point, level, platform];
+                    generalQ(QUERY.USERS_POST,params,(result)=>{
+                        if(result.fail){
+                            socket.emit('register', {fail:true, result: result.error});
+                        } else {
+                            socket.emit('register', {fail:false, result: B_SUCCESS_REQ});
+                        }
+                    });
+                }
+            }catch(e){
+                console.log(e);
             }
         });
         
