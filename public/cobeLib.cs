@@ -111,6 +111,11 @@ static int H_FAIL_SERVER_HACKED  = 501;
                 });
 //            }
         });
+
+        //누군가 코인을 쌓았을 때 
+        socket.On("coinPush", (string data) => {
+            Debug.Log("coinPush : "+data);
+        });
         
         //방의 변경 정보를 받습니다.
         socket.On("roomHistory", (string data)=>{
@@ -205,6 +210,10 @@ static int H_FAIL_SERVER_HACKED  = 501;
             //{"fail":false,"result":{"hostID":"myID","hostNM":"myNickName","level":0,"point":0,"total":2,"IDS":["myID","myID2"],"target":600,"histories":{}}}
             callback(data);
         });
+    }
+
+    public void coinPush(string coin){
+        socket.Emit("coinPush", coin);
     }
 
     //TODO : TEST

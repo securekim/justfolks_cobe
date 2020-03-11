@@ -247,6 +247,14 @@ function multi_endGame(){
 
 }
 
+function multi_coinPush(coin){
+    socket.emit("coinPush", coin);
+}
+
+socket.on('coinPush', function (data) {
+    console.log("[WS] coinPush :" +JSON.stringify(data));
+});
+
 function multi_exitRoom(){
     socket.emit("exitRoom");
 }

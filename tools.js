@@ -283,6 +283,7 @@ module.exports = {
     deleteMyRoom,
     roomsJSON,
     rooms,
-    toJSON
+    toJSON,
+    updateRoomStatus
 };
 

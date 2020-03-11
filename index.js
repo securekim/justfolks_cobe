@@ -42,7 +42,8 @@ const   express         = require('express'),
         deleteMyRoom,
         roomsJSON,
         rooms,
-        toJSON
+        toJSON,
+        updateRoomStatus
     } = tools;
 
     const {
@@ -160,7 +161,7 @@ const   express         = require('express'),
 
         const autoGameEnd = (joinedRoom) =>{
             
-            
+
             io.to("ROOM_"+joinedRoom.result.hostID).emit('endGame',{fail: false, result: joinedRoom.result});
         }
 
@@ -173,11 +174,9 @@ const   express         = require('express'),
                 let joinedRoom = amIjoined(socket);
                 let userInfo = getUserInfo(socket);
                 if(!joinedRoom.fail){
-                    if(!result.fail){
                         io.to("ROOM_"+joinedRoom.result.hostID).emit('coinPush',{fail: false, result: {coinData:coinData, userInfo:userInfo}});
-                    }
-                } else {
-                    socket.emit('coinPush', {fail:true, result: joinedRoom.result});
+                    } else {
+                        socket.emit('coinPush', {fail:true, result: joinedRoom.result});
                 }
             }
         })
