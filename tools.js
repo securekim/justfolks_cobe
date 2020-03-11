@@ -131,6 +131,15 @@ const updateRoom = (socket, roomInfo) =>{
     }
 }
 
+const updateRoomStatus = (hostID, status) =>{
+    roomsJSON["ROOM_"+hostID].status = status;
+    for(var i in rooms){
+        if(rooms[i].hostID == hostID){
+            rooms[i].status = status;
+        }
+    }
+}
+
 const deleteRoom = (socket) =>{
     let joined = amIjoined(socket);
     if(joined.fail) return {fail:true, result:"You are not in the room"};

@@ -120,18 +120,67 @@ const   express         = require('express'),
                 //{fail:true, result:""};
                 let joinedRoom = amIjoined(socket);
                 if(joinedRoom.fail){
-                    let result = getIntoRoom(socket);
-                    if(!result.fail){
-                        socket.join("ROOM_"+result.result.hostID);
+                    let myRoom = getIntoRoom(socket);
+                    if(!myRoom.fail){
+                        socket.join("ROOM_"+myRoom.result.hostID);
                         let userInfo = getUserInfo(socket)
-                        io.to("ROOM_"+result.result.hostID).emit('playerChanged',{roomInfo:result.result ,newUser:userInfo});
+                        io.to("ROOM_"+myRoom.result.hostID).emit('playerChanged',{roomInfo:myRoom.result ,newUser:userInfo});
+                        //DOING
+                        //플레이어가 꽉찼다면, 자동으로 시작하자 
+                        if(myRoom.result.total <= myRoom.result.IDS.length){
+                            startGameAuto(myRoom);
+                        }
                     }
-                    socket.emit('getRoom', result);
+                    socket.emit('getRoom', myRoom);
                 } else {
                     socket.emit('getRoom', {fail:true, result: joinedRoom.result});
                 }
             }
         });
+/*
+            hostID : ID,
+            hostNM : socket.handshake.session.NM,
+            level : socket.handshake.session.level,
+            point : socket.handshake.session.point,
+            total : total,
+            IDS : [ID],
+            status : "ready",
+            target : getRandomTarget(socket.handshake.session.level),
+            gameTime : "",
+            histories : {}        
+*/
+
+        //DOING
+        const startGameAuto = (joinedRoom) => {
+            // 방 상태 변경
+            updateRoomStatus(joinedRoom.result.hostID, "start");
+            // 시작 알림 브로드캐스트 
+            io.to("ROOM_"+joinedRoom.result.hostID).emit('startGame',{fail: false, result: joinedRoom.result});
+        }
+
+        const autoGameEnd = (joinedRoom) =>{
+            
+            
+            io.to("ROOM_"+joinedRoom.result.hostID).emit('endGame',{fail: false, result: joinedRoom.result});
+        }
+
+        socket.on('coinPush', (coinData) =>{
+            console.log("coinPush");
+            if(isLogoutWS(socket)){
+                socket.emit('coinPush', {fail: true, result: "Not Logged In."});
+            } else {
+                //////////////////////////////////////
+                let joinedRoom = amIjoined(socket);
+                let userInfo = getUserInfo(socket);
+                if(!joinedRoom.fail){
+                    if(!result.fail){
+                        io.to("ROOM_"+joinedRoom.result.hostID).emit('coinPush',{fail: false, result: {coinData:coinData, userInfo:userInfo}});
+                    }
+                } else {
+                    socket.emit('coinPush', {fail:true, result: joinedRoom.result});
+                }
+            }
+        })
 
         socket.on('register', (userData) => {
             try{
